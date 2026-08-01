@@ -237,15 +237,15 @@ internal sealed class TuiApplication
                 return;
             }
 
-            SandboxSession? selected = AnsiConsole.Prompt(
-                new SelectionPrompt<SandboxSession?>()
+            SessionChoice selectedChoice = AnsiConsole.Prompt(
+                new SelectionPrompt<SessionChoice>()
                     .Title($"[cyan]{Markup.Escape(_text["Prompt_SelectSession"])}[/]")
                     .PageSize(12)
-                    .UseConverter(session => session is null
+                    .UseConverter(choice => choice.Session is null
                         ? $"← {_text["Sessions_ActionBack"]}"
-                        : $"{session.CreatedAt.ToLocalTime().ToString("g", _text.Culture)}  {session.Id}  {_text.Status(session.Status)}")
-                    .AddChoices([.. sessions.Cast<SandboxSession?>(), null]));
-            if (selected is null) return;
+                        : $"{choice.Session.CreatedAt.ToLocalTime().ToString("g", _text.Culture)}  {choice.Session.Id}  {_text.Status(choice.Session.Status)}")
+                    .AddChoices([.. sessions.Select(session => new SessionChoice(session)), SessionChoice.Back]));
+            if (selectedChoice.Session is not SandboxSession selected) return;
 
             SessionAction action = AnsiConsole.Prompt(
                 new SelectionPrompt<SessionAction>()
@@ -528,6 +528,10 @@ internal sealed class TuiApplication
     private enum CacheAction { Clean, Back }
     private enum UpdateAction { Check, Install, Back }
     private sealed record TemplateChoice(string Name, string DisplayName, string Path);
+    private sealed record SessionChoice(SandboxSession? Session)
+    {
+        public static SessionChoice Back { get; } = new(null);
+    }
 
     private sealed class DelegateProgress<T>(Action<T> action) : IProgress<T>
     {
