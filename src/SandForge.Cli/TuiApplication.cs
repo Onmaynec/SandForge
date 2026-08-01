@@ -530,7 +530,7 @@ internal sealed class TuiApplication
     private sealed record TemplateChoice(string Name, string DisplayName, string Path);
     private sealed record SessionChoice(SandboxSession? Session)
     {
-        public static SessionChoice Back { get; } = new(null);
+        public static SessionChoice Back { get; } = new(Session: null);
     }
 
     private sealed class DelegateProgress<T>(Action<T> action) : IProgress<T>
