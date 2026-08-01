@@ -20,20 +20,21 @@ jobs:
         with:
           ref: agent/sandforge-0.2.0-alpha
 
-      - name: Set up .NET 8
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-
       - name: Reconstruct source tree
         shell: pwsh
         run: |
+          $expected = @(18000, 18000, 18000, 8000, 8000, 8000, 7832)
           $parts = Get-ChildItem .bootstrap/part-* | Sort-Object Name
-          $base64 = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ''
-          $base64 = $base64 -replace '[^A-Za-z0-9+/=]', ''
-          if ($base64.Length -ne 85832) {
-            throw "Unexpected Base64 length: $($base64.Length)"
+          $chunks = @()
+          for ($i = 0; $i -lt $parts.Count; $i++) {
+            $chunk = (Get-Content $parts[$i].FullName -Raw) -replace '[^A-Za-z0-9+/=]', ''
+            Write-Host "$($parts[$i].Name): $($chunk.Length), expected $($expected[$i])"
+            if ($chunk.Length -ne $expected[$i]) {
+              throw "Invalid length for $($parts[$i].Name): $($chunk.Length)"
+            }
+            $chunks += $chunk
           }
+          $base64 = $chunks -join ''
           [IO.File]::WriteAllBytes('source.zip', [Convert]::FromBase64String($base64))
           $hash = (Get-FileHash source.zip -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($hash -ne '29b7f8d867afed0bc60ae03def7cd76cf458d6808dc811910a3a5b5dbc5ddba4') {
@@ -47,6 +48,11 @@ jobs:
           git checkout HEAD -- .github/workflows/build.yml .github/workflows/test.yml .github/workflows/release.yml
           Remove-Item source.zip -Force
           Remove-Item extracted, .bootstrap -Recurse -Force
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
 
       - name: Restore dependencies
         run: dotnet restore SandForge.sln
