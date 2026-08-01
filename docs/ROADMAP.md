@@ -25,14 +25,24 @@
 - [x] cleanup и dry-run;
 - [x] русская документация и CLI по умолчанию.
 
-## 🧪 0.3.0 — Воспроизводимые среды разработки
+## ✅ 0.3.0-alpha — Воспроизводимые среды разработки
 
-- [ ] package provisioning внутри Sandbox;
-- [ ] includes и наследование шаблонов;
-- [ ] matrix runner;
-- [ ] управляемый cache;
-- [ ] полноценный Spectre.Console TUI;
-- [ ] ресурсная локализация RU/EN.
+- [x] package provisioning внутри Sandbox;
+- [x] includes и наследование шаблонов;
+- [x] matrix runner;
+- [x] управляемый cache;
+- [x] безопасные обновления через GitHub Releases.
+
+## 🚧 0.4.0-alpha — Интерактивное управление и локализация
+
+- [x] Spectre.Console dashboard и keyboard-first navigation;
+- [x] мастер запуска с security plan и подтверждением опасных настроек;
+- [x] live host lifecycle progress;
+- [x] экраны sessions/reports/recovery/cleanup/cache/updates;
+- [x] общий RU/EN resource catalog;
+- [x] `ui.language: ru|en|auto` и русский fallback;
+- [x] CI-проверка parity ключей локализации;
+- [ ] локализация оставшихся сообщений Core/guest bootstrap без изменения domain codes.
 
 ## 🎯 1.0.0 — Стабильная платформа
 
@@ -42,4 +52,4 @@
 - [ ] несколько sandbox backends;
 - [ ] внешний security review.
 
-Каждый пункт roadmap представлен отдельной задачей в GitHub Issues с критериями готовности.
+Каждый крупный пункт roadmap представлен отдельной задачей в GitHub Issues с критериями готовности.
