@@ -64,7 +64,7 @@ public sealed class UiText
     public static IReadOnlyList<string> MissingKeys(string language)
     {
         CultureInfo culture = language.Equals("en", StringComparison.OrdinalIgnoreCase)
-            ? EnglishCulture
+            ? CultureInfo.GetCultureInfo("en")
             : CultureInfo.InvariantCulture;
         ResourceSet? resourceSet = ResourceManager.GetResourceSet(culture, true, false);
         if (resourceSet is null) return RequiredKeys;
