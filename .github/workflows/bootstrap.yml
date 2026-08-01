@@ -39,7 +39,7 @@ jobs:
             ForEach-Object { Copy-Item $_.FullName . -Recurse -Force }
           Remove-Item source.zip -Force
           Remove-Item extracted, .bootstrap -Recurse -Force
-          Remove-Item .github/workflows/bootstrap.yml -Force
+          Remove-Item .github/workflows -Recurse -Force
 
       - name: Restore dependencies
         run: dotnet restore SandForge.sln
