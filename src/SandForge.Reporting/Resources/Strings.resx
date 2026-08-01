@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="App_Title" xml:space="preserve"><value>SandForge</value></data>
+  <data name="App_Subtitle" xml:space="preserve"><value>Менеджер одноразовых Windows-окружений</value></data>
+  <data name="App_Version" xml:space="preserve"><value>Версия {0}</value></data>
+  <data name="Help_Text" xml:space="preserve"><value>SandForge — менеджер одноразовых Windows-окружений.
+
+Использование:
+  sandforge doctor
+  sandforge run &lt;файл&gt; [--template &lt;путь&gt;]
+  sandforge run-script &lt;файл&gt; [--template &lt;путь&gt;]
+  sandforge test-installer &lt;файл&gt; [--template &lt;путь&gt;]
+  sandforge matrix run &lt;файл&gt; --templates &lt;имя1,имя2&gt; [--parallel 2]
+  sandforge session list|show|delete [id]
+  sandforge report &lt;id&gt; [--format console|json|html]
+  sandforge recover
+  sandforge cleanup [--dry-run] [--older-than 30d] [--orphaned]
+  sandforge cache list
+  sandforge cache clean [тип] [--dry-run]
+  sandforge update check
+  sandforge update install [--yes]
+  sandforge update auto on|off [--apply]
+  sandforge update channel stable|preview
+
+Без аргументов запускается интерактивный TUI.
+Шаблоны schemaVersion 2 поддерживают extends/includes, provisioning и managed cache.</value></data>
+  <data name="Error_UnknownCommand" xml:space="preserve"><value>Неверная команда: {0}. Используйте sandforge --help.</value></data>
+  <data name="Error_OperationCancelled" xml:space="preserve"><value>Операция отменена.</value></data>
+  <data name="Error_Generic" xml:space="preserve"><value>Ошибка SandForge: {0}</value></data>
+  <data name="Dashboard_Title" xml:space="preserve"><value>Панель управления</value></data>
+  <data name="Dashboard_Environment" xml:space="preserve"><value>Окружение</value></data>
+  <data name="Dashboard_RecentSessions" xml:space="preserve"><value>Последние сессии</value></data>
+  <data name="Dashboard_NoSessions" xml:space="preserve"><value>Сессий пока нет.</value></data>
+  <data name="Menu_Run" xml:space="preserve"><value>Запустить файл</value></data>
+  <data name="Menu_TestInstaller" xml:space="preserve"><value>Проверить установщик</value></data>
+  <data name="Menu_Sessions" xml:space="preserve"><value>Сессии и отчёты</value></data>
+  <data name="Menu_Recovery" xml:space="preserve"><value>Восстановление</value></data>
+  <data name="Menu_Cleanup" xml:space="preserve"><value>Очистка</value></data>
+  <data name="Menu_Cache" xml:space="preserve"><value>Managed cache</value></data>
+  <data name="Menu_Updates" xml:space="preserve"><value>Обновления</value></data>
+  <data name="Menu_Exit" xml:space="preserve"><value>Выход</value></data>
+  <data name="Prompt_TargetPath" xml:space="preserve"><value>Путь к целевому файлу:</value></data>
+  <data name="Prompt_Template" xml:space="preserve"><value>Выберите шаблон:</value></data>
+  <data name="Prompt_ConfirmLaunch" xml:space="preserve"><value>Запустить эту сессию?</value></data>
+  <data name="Prompt_ConfirmDangerousLaunch" xml:space="preserve"><value>План ослабляет изоляцию. Вы точно хотите продолжить?</value></data>
+  <data name="Prompt_Continue" xml:space="preserve"><value>Нажмите Enter, чтобы продолжить</value></data>
+  <data name="Prompt_ReportFormat" xml:space="preserve"><value>Формат отчёта:</value></data>
+  <data name="Prompt_SelectSession" xml:space="preserve"><value>Выберите сессию:</value></data>
+  <data name="Prompt_SelectCacheType" xml:space="preserve"><value>Выберите тип cache:</value></data>
+  <data name="Security_Title" xml:space="preserve"><value>План безопасности</value></data>
+  <data name="Security_Risk" xml:space="preserve"><value>Риск</value></data>
+  <data name="Security_Network" xml:space="preserve"><value>Сеть</value></data>
+  <data name="Security_Clipboard" xml:space="preserve"><value>Буфер обмена</value></data>
+  <data name="Security_Timeout" xml:space="preserve"><value>Timeout</value></data>
+  <data name="Security_Mounts" xml:space="preserve"><value>Mounts</value></data>
+  <data name="Security_Collectors" xml:space="preserve"><value>Коллекторы</value></data>
+  <data name="Security_Findings" xml:space="preserve"><value>Замечания</value></data>
+  <data name="Security_NoFindings" xml:space="preserve"><value>Замечаний нет.</value></data>
+  <data name="Security_Blocked" xml:space="preserve"><value>Запуск заблокирован политикой безопасности.</value></data>
+  <data name="Run_Preparing" xml:space="preserve"><value>Подготовка workspace…</value></data>
+  <data name="Run_Validating" xml:space="preserve"><value>Проверка шаблона и политики безопасности…</value></data>
+  <data name="Run_Launching" xml:space="preserve"><value>Запуск Windows Sandbox…</value></data>
+  <data name="Run_Running" xml:space="preserve"><value>Цель выполняется внутри Sandbox…</value></data>
+  <data name="Run_Collecting" xml:space="preserve"><value>Импорт артефактов и результатов коллекторов…</value></data>
+  <data name="Run_Completed" xml:space="preserve"><value>Сессия завершена.</value></data>
+  <data name="Sessions_Title" xml:space="preserve"><value>Сессии</value></data>
+  <data name="Sessions_Empty" xml:space="preserve"><value>Сохранённых сессий нет.</value></data>
+  <data name="Sessions_ActionView" xml:space="preserve"><value>Показать отчёт</value></data>
+  <data name="Sessions_ActionJson" xml:space="preserve"><value>Создать JSON-отчёт</value></data>
+  <data name="Sessions_ActionHtml" xml:space="preserve"><value>Создать HTML-отчёт</value></data>
+  <data name="Sessions_ActionDelete" xml:space="preserve"><value>Удалить сессию</value></data>
+  <data name="Sessions_ActionBack" xml:space="preserve"><value>Назад</value></data>
+  <data name="Sessions_DeleteConfirm" xml:space="preserve"><value>Удалить workspace и запись сессии {0}?</value></data>
+  <data name="Sessions_Deleted" xml:space="preserve"><value>Сессия {0} удалена.</value></data>
+  <data name="Recovery_Title" xml:space="preserve"><value>Восстановление сессий</value></data>
+  <data name="Recovery_Result" xml:space="preserve"><value>Проверено: {0}; восстановлено: {1}; orphaned: {2}; ошибок: {3}.</value></data>
+  <data name="Cleanup_Title" xml:space="preserve"><value>Безопасная очистка</value></data>
+  <data name="Cleanup_None" xml:space="preserve"><value>Подходящих workspace для очистки нет.</value></data>
+  <data name="Cleanup_Preview" xml:space="preserve"><value>Найдено workspace: {0}; объём: {1}.</value></data>
+  <data name="Cleanup_Confirm" xml:space="preserve"><value>Удалить показанные workspace?</value></data>
+  <data name="Cleanup_Result" xml:space="preserve"><value>Очищено: {0}; освобождено: {1}.</value></data>
+  <data name="Cache_Title" xml:space="preserve"><value>Managed cache</value></data>
+  <data name="Cache_Empty" xml:space="preserve"><value>Cache пуст.</value></data>
+  <data name="Cache_ActionClean" xml:space="preserve"><value>Очистить cache</value></data>
+  <data name="Cache_ActionBack" xml:space="preserve"><value>Назад</value></data>
+  <data name="Cache_Result" xml:space="preserve"><value>Удалено файлов: {0}; освобождено: {1}.</value></data>
+  <data name="Updates_Title" xml:space="preserve"><value>Обновления</value></data>
+  <data name="Updates_Status" xml:space="preserve"><value>Статус обновлений</value></data>
+  <data name="Updates_Check" xml:space="preserve"><value>Проверить обновления</value></data>
+  <data name="Updates_Install" xml:space="preserve"><value>Установить доступное обновление</value></data>
+  <data name="Updates_Back" xml:space="preserve"><value>Назад</value></data>
+  <data name="Report_Title" xml:space="preserve"><value>ОТЧЁТ СЕССИИ SANDFORGE</value></data>
+  <data name="Report_Offline" xml:space="preserve"><value>Автономный отчёт без внешних ресурсов.</value></data>
+  <data name="Report_Session" xml:space="preserve"><value>Сессия</value></data>
+  <data name="Report_Template" xml:space="preserve"><value>Шаблон</value></data>
+  <data name="Report_Status" xml:space="preserve"><value>Статус</value></data>
+  <data name="Report_Risk" xml:space="preserve"><value>Риск</value></data>
+  <data name="Report_TargetHash" xml:space="preserve"><value>SHA-256 цели</value></data>
+  <data name="Report_Artifacts" xml:space="preserve"><value>Артефакты</value></data>
+  <data name="Report_Collectors" xml:space="preserve"><value>Результаты коллекторов</value></data>
+  <data name="Report_Cleanup" xml:space="preserve"><value>Очистка</value></data>
+  <data name="Report_Error" xml:space="preserve"><value>Ошибка</value></data>
+  <data name="Report_Collector" xml:space="preserve"><value>Коллектор</value></data>
+  <data name="Report_Changes" xml:space="preserve"><value>Изменения</value></data>
+  <data name="Report_File" xml:space="preserve"><value>Файл</value></data>
+  <data name="Report_State" xml:space="preserve"><value>Состояние</value></data>
+  <data name="Report_Type" xml:space="preserve"><value>Тип</value></data>
+  <data name="Report_Path" xml:space="preserve"><value>Путь</value></data>
+  <data name="Report_Size" xml:space="preserve"><value>Размер</value></data>
+  <data name="Report_Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Report_CollectorError" xml:space="preserve"><value>ошибка</value></data>
+  <data name="Status_Created" xml:space="preserve"><value>Создана</value></data>
+  <data name="Status_Validating" xml:space="preserve"><value>Проверка</value></data>
+  <data name="Status_Preparing" xml:space="preserve"><value>Подготовка</value></data>
+  <data name="Status_Ready" xml:space="preserve"><value>Готова</value></data>
+  <data name="Status_Starting" xml:space="preserve"><value>Запуск</value></data>
+  <data name="Status_Running" xml:space="preserve"><value>Работает</value></data>
+  <data name="Status_Stopping" xml:space="preserve"><value>Остановка</value></data>
+  <data name="Status_Collecting" xml:space="preserve"><value>Сбор данных</value></data>
+  <data name="Status_Completed" xml:space="preserve"><value>Завершена</value></data>
+  <data name="Status_Partial" xml:space="preserve"><value>Частично</value></data>
+  <data name="Status_Failed" xml:space="preserve"><value>Ошибка</value></data>
+  <data name="Status_Cancelled" xml:space="preserve"><value>Отменена</value></data>
+  <data name="Status_TimedOut" xml:space="preserve"><value>Timeout</value></data>
+  <data name="Status_Orphaned" xml:space="preserve"><value>Потеряна</value></data>
+  <data name="Risk_Low" xml:space="preserve"><value>Низкий</value></data>
+  <data name="Risk_Medium" xml:space="preserve"><value>Средний</value></data>
+  <data name="Risk_High" xml:space="preserve"><value>Высокий</value></data>
+  <data name="Risk_Critical" xml:space="preserve"><value>Критический</value></data>
+  <data name="Cleanup_Pending" xml:space="preserve"><value>Ожидает</value></data>
+  <data name="Cleanup_Kept" xml:space="preserve"><value>Сохранён</value></data>
+  <data name="Cleanup_Cleaned" xml:space="preserve"><value>Очищен</value></data>
+  <data name="Network_Disabled" xml:space="preserve"><value>Отключена</value></data>
+  <data name="Network_Enabled" xml:space="preserve"><value>Включена</value></data>
+  <data name="Network_Required" xml:space="preserve"><value>Обязательна</value></data>
+  <data name="Clipboard_Disabled" xml:space="preserve"><value>Отключён</value></data>
+  <data name="Clipboard_Enabled" xml:space="preserve"><value>Включён</value></data>
+</root>
