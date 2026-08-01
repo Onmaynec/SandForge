@@ -1,0 +1,63 @@
+name: Bootstrap SandForge 0.2
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.bootstrap/**'
+      - '.github/workflows/bootstrap-0.2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout publication branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/sandforge-0.2.0-alpha
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Reconstruct source tree
+        shell: pwsh
+        run: |
+          $parts = Get-ChildItem .bootstrap/part-* | Sort-Object Name
+          $base64 = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ''
+          [IO.File]::WriteAllBytes('source.zip', [Convert]::FromBase64String($base64))
+          $hash = (Get-FileHash source.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne '29b7f8d867afed0bc60ae03def7cd76cf458d6808dc811910a3a5b5dbc5ddba4') {
+            throw "SHA-256 mismatch: $hash"
+          }
+          Expand-Archive source.zip -DestinationPath extracted -Force
+          Copy-Item extracted/SandForge/* . -Recurse -Force
+          Get-ChildItem extracted/SandForge -Force |
+            Where-Object { $_.Name.StartsWith('.') -and $_.Name -ne '.git' } |
+            ForEach-Object { Copy-Item $_.FullName . -Recurse -Force }
+          git checkout HEAD -- .github/workflows/build.yml .github/workflows/test.yml .github/workflows/release.yml
+          Remove-Item source.zip -Force
+          Remove-Item extracted, .bootstrap -Recurse -Force
+
+      - name: Restore dependencies
+        run: dotnet restore SandForge.sln
+
+      - name: Build
+        run: dotnet build SandForge.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test SandForge.sln --configuration Release --no-build
+
+      - name: Commit validated project
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Publish SandForge 0.2.0-alpha"
+          git push origin HEAD:agent/sandforge-0.2.0-alpha
