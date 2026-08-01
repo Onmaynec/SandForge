@@ -41,7 +41,7 @@ public sealed class SandboxConfigurationGenerator : ISandboxConfigurationGenerat
         AppendFolder(xml, workspace.Input, guestInput, true);
         AppendFolder(xml, workspace.Output, guestOutput, false);
         AppendFolder(xml, workspace.Bootstrap, guestBootstrap, true);
-        foreach (SessionMount mount in plan.Mounts.Where(x => x.Mode is MountMode.ReadOnly or MountMode.ReadWrite))
+        foreach (SessionMount mount in plan.Mounts.Concat(plan.CacheMounts).Where(x => x.Mode is MountMode.ReadOnly or MountMode.ReadWrite))
             AppendFolder(xml, mount.HostPath, mount.GuestPath, mount.Mode == MountMode.ReadOnly);
         xml.AppendLine("  </MappedFolders>");
         xml.AppendLine("  <LogonCommand>");
@@ -64,24 +64,48 @@ public sealed class SandboxConfigurationGenerator : ISandboxConfigurationGenerat
     {
         string argsJson = JsonSerializer.Serialize(plan.Target.Arguments.Select(x => x.Replace("${targetFileName}", plan.TargetFileName, StringComparison.Ordinal)));
         string collectorsJson = JsonSerializer.Serialize(plan.ArtifactCollectors.Select(x => x.ToLowerInvariant()));
+        string packagesJson = JsonSerializer.Serialize(plan.Packages.Select(x => new { id = x.Id, version = x.Version, source = x.Source }));
+        string installersJson = JsonSerializer.Serialize(plan.Installers.Select(x => new
+        {
+            path = x.GuestPath,
+            sha256 = x.Sha256,
+            arguments = x.Arguments,
+            timeoutSeconds = Math.Max(1, (int)x.Timeout.TotalSeconds)
+        }));
+        string cacheTypesJson = JsonSerializer.Serialize(plan.CacheMounts.Select(x => x.GuestPath.Split('\\').Last().ToLowerInvariant()));
+        string failurePolicy = plan.ProvisioningFailurePolicy.ToString().ToLowerInvariant();
         string escapedTarget = Ps(targetGuestPath);
         string escapedWorking = Ps(plan.Target.WorkingDirectory);
         string escapedSession = Ps(plan.SessionId);
         string escapedOutput = Ps(guestOutput);
-        return $$"""
+        return $$$$"""
         $ErrorActionPreference = 'Stop'
-        $sessionId = '{{escapedSession}}'
-        $outputRoot = '{{escapedOutput}}'
-        $workingDirectory = '{{escapedWorking}}'
+        $sessionId = '{{{{escapedSession}}}}'
+        $outputRoot = '{{{{escapedOutput}}}}'
+        $workingDirectory = '{{{{escapedWorking}}}}'
+        $provisioningFailurePolicy = '{{{{failurePolicy}}}}'
         $metaRoot = Join-Path $outputRoot '.sandforge'
         $collectorRoot = Join-Path $metaRoot 'collectors'
         New-Item -ItemType Directory -Force -Path $outputRoot, $workingDirectory, $metaRoot, $collectorRoot | Out-Null
         $arguments = @(ConvertFrom-Json @'
-        {{argsJson}}
+        {{{{argsJson}}}}
         '@)
         $collectors = @(ConvertFrom-Json @'
-        {{collectorsJson}}
+        {{{{collectorsJson}}}}
         '@)
+        $packages = @(ConvertFrom-Json @'
+        {{{{packagesJson}}}}
+        '@)
+        $installers = @(ConvertFrom-Json @'
+        {{{{installersJson}}}}
+        '@)
+        $cacheTypes = @(ConvertFrom-Json @'
+        {{{{cacheTypesJson}}}}
+        '@)
+
+        if($cacheTypes -contains 'nuget'){ $env:NUGET_PACKAGES='C:\Sandbox\Cache\nuget' }
+        if($cacheTypes -contains 'npm'){ $env:npm_config_cache='C:\Sandbox\Cache\npm' }
+        if($cacheTypes -contains 'pip'){ $env:PIP_CACHE_DIR='C:\Sandbox\Cache\pip' }
 
         function Test-Collector([string]$name) { return $collectors -contains $name }
         function Capture-Snapshot([scriptblock]$action) {
@@ -92,25 +116,75 @@ public sealed class SandboxConfigurationGenerator : ISandboxConfigurationGenerat
           $errorText = (@($errors) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }) -join ' | '
           if ([string]::IsNullOrWhiteSpace($errorText)) { $errorText = $null }
           $payload = [ordered]@{ collector=$name; items=@($items); error=$errorText }
-          $fileName = if($name -eq 'process-list'){ "$name.json" }else{ "$name-diff.json" }
-          $payload | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 (Join-Path $collectorRoot $fileName)
+          $fileName = if($name -in @('process-list','provisioning')){ "$name.json" }else{ "$name-diff.json" }
+          $payload | ConvertTo-Json -Depth 10 | Set-Content -Encoding UTF8 (Join-Path $collectorRoot $fileName)
+        }
+        function Invoke-SandForgeProcess([string]$file, [object[]]$processArguments, [int]$timeoutSeconds) {
+          $stdout = Join-Path $metaRoot ("process-{0}-stdout.txt" -f [Guid]::NewGuid().ToString('N'))
+          $stderr = Join-Path $metaRoot ("process-{0}-stderr.txt" -f [Guid]::NewGuid().ToString('N'))
+          try {
+            $process = Start-Process -FilePath $file -ArgumentList $processArguments -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr -WindowStyle Hidden
+            if(-not $process.WaitForExit([Math]::Max(1,$timeoutSeconds) * 1000)){
+              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+              return [pscustomobject]@{ ExitCode=124; Error="Timeout ${timeoutSeconds}s"; StdOut=$stdout; StdErr=$stderr }
+            }
+            return [pscustomobject]@{ ExitCode=$process.ExitCode; Error=$null; StdOut=$stdout; StdErr=$stderr }
+          } catch {
+            return [pscustomobject]@{ ExitCode=1; Error=$_.Exception.Message; StdOut=$stdout; StdErr=$stderr }
+          }
+        }
+        function Invoke-Provisioning {
+          $results=@()
+          foreach($package in $packages){
+            $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+            if($null -eq $winget){
+              $results += [pscustomobject]@{ Type='package'; Id=$package.id; Success=$false; ExitCode=127; Error='winget.exe не найден' }
+              continue
+            }
+            $packageArgs=@('install','--id',[string]$package.id,'--exact','--silent','--disable-interactivity','--accept-package-agreements','--accept-source-agreements')
+            if(-not [string]::IsNullOrWhiteSpace([string]$package.version)){ $packageArgs += @('--version',[string]$package.version) }
+            if(-not [string]::IsNullOrWhiteSpace([string]$package.source)){ $packageArgs += @('--source',[string]$package.source) }
+            $run=Invoke-SandForgeProcess $winget.Source $packageArgs 900
+            $results += [pscustomobject]@{ Type='package'; Id=$package.id; Version=$package.version; Success=($run.ExitCode -eq 0); ExitCode=$run.ExitCode; Error=$run.Error; StdOut=$run.StdOut; StdErr=$run.StdErr }
+          }
+          foreach($installer in $installers){
+            if(-not (Test-Path -LiteralPath $installer.path)){
+              $results += [pscustomobject]@{ Type='installer'; Id=$installer.path; Success=$false; ExitCode=2; Error='Файл installer не найден' }
+              continue
+            }
+            $actual=(Get-FileHash -LiteralPath $installer.path -Algorithm SHA256).Hash
+            if($actual -ne [string]$installer.sha256){
+              $results += [pscustomobject]@{ Type='installer'; Id=$installer.path; Success=$false; ExitCode=3; Error='SHA-256 не совпадает' }
+              continue
+            }
+            $extension=[IO.Path]::GetExtension([string]$installer.path).ToLowerInvariant()
+            $file=[string]$installer.path
+            $installerArgs=@($installer.arguments)
+            if($extension -eq '.msi'){
+              $file='msiexec.exe'
+              $installerArgs=@('/i',[string]$installer.path,'/qn','/norestart') + $installerArgs
+            }
+            $run=Invoke-SandForgeProcess $file $installerArgs ([int]$installer.timeoutSeconds)
+            $results += [pscustomobject]@{ Type='installer'; Id=$installer.path; Success=($run.ExitCode -eq 0); ExitCode=$run.ExitCode; Error=$run.Error; StdOut=$run.StdOut; StdErr=$run.StdErr }
+          }
+          return @($results)
         }
         function Get-ProcessesSnapshot {
           @(Get-CimInstance Win32_Process -ErrorAction Stop | Select-Object ProcessId,ParentProcessId,Name,ExecutablePath,CreationDate)
         }
         function Get-InstalledAppsSnapshot {
           $paths = @('HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*','HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*')
-          @($paths | ForEach-Object { Get-ItemProperty $_ -ErrorAction SilentlyContinue } | Where-Object DisplayName | Select-Object @{n='Id';e={"$($_.PSPath)|$($_.DisplayName)"} },DisplayName,DisplayVersion,Publisher,InstallLocation)
+          @($paths | ForEach-Object { Get-ItemProperty $_ -ErrorAction SilentlyContinue } | Where-Object DisplayName | Select-Object @{n='Id';e={"$($_.PSPath)|$($_.DisplayName)"}},DisplayName,DisplayVersion,Publisher,InstallLocation)
         }
         function Get-ServicesSnapshot {
           @(Get-CimInstance Win32_Service -ErrorAction Stop | Select-Object Name,DisplayName,State,StartMode,PathName)
         }
         function Get-TasksSnapshot {
-          if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) { @(Get-ScheduledTask -ErrorAction Stop | Select-Object @{n='Id';e={"$($_.TaskPath)$($_.TaskName)"} },TaskName,TaskPath,State) } else { @() }
+          if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) { @(Get-ScheduledTask -ErrorAction Stop | Select-Object @{n='Id';e={"$($_.TaskPath)$($_.TaskName)"}},TaskName,TaskPath,State) } else { @() }
         }
         function Get-FilesSnapshot {
           $roots = @($env:ProgramFiles,${env:ProgramFiles(x86)},$env:ProgramData,$env:LOCALAPPDATA) | Where-Object { $_ -and (Test-Path $_) }
-          @($roots | ForEach-Object { Get-ChildItem $_ -File -Recurse -Force -ErrorAction SilentlyContinue } | Select-Object -First 50000 @{n='Path';e={$_.FullName} },Length,LastWriteTimeUtc)
+          @($roots | ForEach-Object { Get-ChildItem $_ -File -Recurse -Force -ErrorAction SilentlyContinue } | Select-Object -First 50000 @{n='Path';e={$_.FullName}},Length,LastWriteTimeUtc)
         }
         function Get-RegistrySnapshot {
           $keys = @('HKLM:\Software\Microsoft\Windows\CurrentVersion\Run','HKCU:\Software\Microsoft\Windows\CurrentVersion\Run','HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall','HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall')
@@ -140,6 +214,14 @@ public sealed class SandboxConfigurationGenerator : ISandboxConfigurationGenerat
           return @($changes)
         }
 
+        $provisioningResults=@()
+        if($packages.Count -gt 0 -or $installers.Count -gt 0){
+          $provisioningResults=Invoke-Provisioning
+          $provisioningErrors=@($provisioningResults | Where-Object { -not $_.Success } | ForEach-Object { "$($_.Type):$($_.Id):$($_.Error)" })
+          Save-Collector 'provisioning' $provisioningResults $provisioningErrors
+        }
+        $provisioningFailed=@($provisioningResults | Where-Object { -not $_.Success }).Count
+
         $before=@{}
         if(Test-Collector 'installed-apps'){ $before.apps = Capture-Snapshot { Get-InstalledAppsSnapshot } }
         if(Test-Collector 'services'){ $before.services = Capture-Snapshot { Get-ServicesSnapshot } }
@@ -151,10 +233,14 @@ public sealed class SandboxConfigurationGenerator : ISandboxConfigurationGenerat
         $exitCode=1
         $locationPushed=$false
         try {
-          Push-Location $workingDirectory
-          $locationPushed=$true
-          & '{{escapedTarget}}' @arguments
-          $exitCode=if($null -eq $LASTEXITCODE){0}else{[int]$LASTEXITCODE}
+          if($provisioningFailed -gt 0 -and $provisioningFailurePolicy -eq 'stop'){
+            $exitCode=20
+          } else {
+            Push-Location $workingDirectory
+            $locationPushed=$true
+            & '{{{{escapedTarget}}}}' @arguments
+            $exitCode=if($null -eq $LASTEXITCODE){0}else{[int]$LASTEXITCODE}
+          }
         } catch {
           $_ | Out-String | Set-Content -Encoding UTF8 (Join-Path $metaRoot 'bootstrap-error.txt')
           $exitCode=1
@@ -191,7 +277,7 @@ public sealed class SandboxConfigurationGenerator : ISandboxConfigurationGenerat
             Save-Collector 'registry-changes' $items @($before.registry.Error,$after.Error)
           }
 
-          $marker=[ordered]@{schemaVersion=1;sessionId=$sessionId;targetExitCode=$exitCode;startedAt=$startedAt.ToString('O');endedAt=[DateTimeOffset]::UtcNow.ToString('O')}
+          $marker=[ordered]@{schemaVersion=1;sessionId=$sessionId;targetExitCode=$exitCode;provisioningFailed=$provisioningFailed;startedAt=$startedAt.ToString('O');endedAt=[DateTimeOffset]::UtcNow.ToString('O')}
           $marker | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $metaRoot 'completed.json')
           Start-Sleep -Seconds 1
           Start-Process shutdown.exe -ArgumentList '/s','/t','1' -WindowStyle Hidden

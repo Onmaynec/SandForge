@@ -33,6 +33,17 @@ public sealed class WorkspaceManager : IWorkspaceManager
         string destination = Path.Combine(workspace.Input, plan.TargetFileName);
         await CopyAsync(plan.TargetSourcePath, destination, cancellationToken);
 
+        if (plan.Installers.Count > 0)
+        {
+            string provisioningDirectory = Path.Combine(workspace.Input, "provisioning");
+            Directory.CreateDirectory(provisioningDirectory);
+            foreach (ProvisioningInstallerPlan installer in plan.Installers)
+            {
+                string installerDestination = Path.Combine(provisioningDirectory, Path.GetFileName(installer.GuestPath));
+                await CopyAsync(installer.SourcePath, installerDestination, cancellationToken);
+            }
+        }
+
         string planPath = Path.Combine(workspace.Metadata, "plan.json");
         await File.WriteAllTextAsync(planPath, JsonSerializer.Serialize(plan, JsonOptions), cancellationToken);
         return workspace;

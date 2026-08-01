@@ -3,12 +3,17 @@
   "$id": "https://sandforge.dev/schemas/template.schema.json",
   "title": "SandForge template",
   "type": "object",
-  "required": ["schemaVersion", "metadata", "sandbox", "session", "target"],
+  "required": ["schemaVersion"],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "enum": [1, 2] },
+    "extends": { "type": "string", "minLength": 1 },
+    "includes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
     "metadata": {
       "type": "object",
-      "required": ["name"],
       "properties": {
         "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$" },
         "displayName": { "type": "string" },
@@ -29,7 +34,7 @@
     "session": {
       "type": "object",
       "properties": {
-        "timeout": { "type": "string" },
+        "timeout": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?[smh]$" },
         "keepWorkspace": { "type": "boolean" }
       },
       "additionalProperties": false
@@ -49,7 +54,6 @@
     },
     "target": {
       "type": "object",
-      "required": ["executable"],
       "properties": {
         "executable": { "type": "string" },
         "workingDirectory": { "type": "string" },
@@ -57,7 +61,80 @@
         "wait": { "type": "boolean" }
       },
       "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "object",
+      "properties": {
+        "collectors": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "provisioning": {
+      "type": "object",
+      "properties": {
+        "failurePolicy": { "enum": ["stop", "continue"] },
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "version": { "type": "string" },
+              "source": { "const": "winget" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "installers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+              "arguments": { "type": "array", "items": { "type": "string" } },
+              "timeout": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?[smh]$" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "cache": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "maximumSizeMb": { "type": "integer", "minimum": 64, "maximum": 32768 },
+        "types": {
+          "type": "array",
+          "items": { "enum": ["nuget", "npm", "pip", "winget"] },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
     }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "schemaVersion": { "const": 1 } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["extends"] },
+            { "required": ["includes"] },
+            { "required": ["provisioning"] },
+            { "required": ["cache"] }
+          ]
+        }
+      }
+    }
+  ],
   "additionalProperties": false
 }

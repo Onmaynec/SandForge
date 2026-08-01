@@ -2,6 +2,14 @@
 
 Все задачи SandForge оформлены в GitHub Issues на русском языке. В каждой задаче указаны цель, объём работ и критерии готовности.
 
+## 0.3.0-alpha — завершено
+
+- [x] безопасные extends/includes;
+- [x] package и local installer provisioning;
+- [x] Matrix Runner;
+- [x] managed cache;
+- [x] GitHub Releases auto-update с SHA-256 и rollback.
+
 ## 0.2.0-alpha — реализовано в текущей ветке
 
 - [#2 — SQLite-история сессий](https://github.com/Onmaynec/SandForge/issues/2)
