@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="App_Title" xml:space="preserve"><value>SandForge</value></data>
+  <data name="App_Subtitle" xml:space="preserve"><value>Disposable Windows environment manager</value></data>
+  <data name="App_Version" xml:space="preserve"><value>Version {0}</value></data>
+  <data name="Help_Text" xml:space="preserve"><value>SandForge — disposable Windows environment manager.
+
+Usage:
+  sandforge doctor
+  sandforge run &lt;file&gt; [--template &lt;path&gt;]
+  sandforge run-script &lt;file&gt; [--template &lt;path&gt;]
+  sandforge test-installer &lt;file&gt; [--template &lt;path&gt;]
+  sandforge matrix run &lt;file&gt; --templates &lt;name1,name2&gt; [--parallel 2]
+  sandforge session list|show|delete [id]
+  sandforge report &lt;id&gt; [--format console|json|html]
+  sandforge recover
+  sandforge cleanup [--dry-run] [--older-than 30d] [--orphaned]
+  sandforge cache list
+  sandforge cache clean [type] [--dry-run]
+  sandforge update check
+  sandforge update install [--yes]
+  sandforge update auto on|off [--apply]
+  sandforge update channel stable|preview
+
+Running without arguments opens the interactive TUI.
+SchemaVersion 2 templates support extends/includes, provisioning and managed cache.</value></data>
+  <data name="Error_UnknownCommand" xml:space="preserve"><value>Unknown command: {0}. Use sandforge --help.</value></data>
+  <data name="Error_OperationCancelled" xml:space="preserve"><value>Operation cancelled.</value></data>
+  <data name="Error_Generic" xml:space="preserve"><value>SandForge error: {0}</value></data>
+  <data name="Dashboard_Title" xml:space="preserve"><value>Dashboard</value></data>
+  <data name="Dashboard_Environment" xml:space="preserve"><value>Environment</value></data>
+  <data name="Dashboard_RecentSessions" xml:space="preserve"><value>Recent sessions</value></data>
+  <data name="Dashboard_NoSessions" xml:space="preserve"><value>No sessions yet.</value></data>
+  <data name="Menu_Run" xml:space="preserve"><value>Run a file</value></data>
+  <data name="Menu_TestInstaller" xml:space="preserve"><value>Test an installer</value></data>
+  <data name="Menu_Sessions" xml:space="preserve"><value>Sessions and reports</value></data>
+  <data name="Menu_Recovery" xml:space="preserve"><value>Recovery</value></data>
+  <data name="Menu_Cleanup" xml:space="preserve"><value>Cleanup</value></data>
+  <data name="Menu_Cache" xml:space="preserve"><value>Managed cache</value></data>
+  <data name="Menu_Updates" xml:space="preserve"><value>Updates</value></data>
+  <data name="Menu_Exit" xml:space="preserve"><value>Exit</value></data>
+  <data name="Prompt_TargetPath" xml:space="preserve"><value>Target file path:</value></data>
+  <data name="Prompt_Template" xml:space="preserve"><value>Select a template:</value></data>
+  <data name="Prompt_ConfirmLaunch" xml:space="preserve"><value>Launch this session?</value></data>
+  <data name="Prompt_ConfirmDangerousLaunch" xml:space="preserve"><value>This plan weakens isolation. Continue anyway?</value></data>
+  <data name="Prompt_Continue" xml:space="preserve"><value>Press Enter to continue</value></data>
+  <data name="Prompt_ReportFormat" xml:space="preserve"><value>Report format:</value></data>
+  <data name="Prompt_SelectSession" xml:space="preserve"><value>Select a session:</value></data>
+  <data name="Prompt_SelectCacheType" xml:space="preserve"><value>Select a cache type:</value></data>
+  <data name="Security_Title" xml:space="preserve"><value>Security plan</value></data>
+  <data name="Security_Risk" xml:space="preserve"><value>Risk</value></data>
+  <data name="Security_Network" xml:space="preserve"><value>Network</value></data>
+  <data name="Security_Clipboard" xml:space="preserve"><value>Clipboard</value></data>
+  <data name="Security_Timeout" xml:space="preserve"><value>Timeout</value></data>
+  <data name="Security_Mounts" xml:space="preserve"><value>Mounts</value></data>
+  <data name="Security_Collectors" xml:space="preserve"><value>Collectors</value></data>
+  <data name="Security_Findings" xml:space="preserve"><value>Findings</value></data>
+  <data name="Security_NoFindings" xml:space="preserve"><value>No findings.</value></data>
+  <data name="Security_Blocked" xml:space="preserve"><value>Launch blocked by the security policy.</value></data>
+  <data name="Run_Preparing" xml:space="preserve"><value>Preparing the workspace…</value></data>
+  <data name="Run_Validating" xml:space="preserve"><value>Validating the template and security policy…</value></data>
+  <data name="Run_Launching" xml:space="preserve"><value>Launching Windows Sandbox…</value></data>
+  <data name="Run_Running" xml:space="preserve"><value>Running the target inside Sandbox…</value></data>
+  <data name="Run_Collecting" xml:space="preserve"><value>Importing artifacts and collector results…</value></data>
+  <data name="Run_Completed" xml:space="preserve"><value>Session completed.</value></data>
+  <data name="Sessions_Title" xml:space="preserve"><value>Sessions</value></data>
+  <data name="Sessions_Empty" xml:space="preserve"><value>No saved sessions.</value></data>
+  <data name="Sessions_ActionView" xml:space="preserve"><value>View report</value></data>
+  <data name="Sessions_ActionJson" xml:space="preserve"><value>Create JSON report</value></data>
+  <data name="Sessions_ActionHtml" xml:space="preserve"><value>Create HTML report</value></data>
+  <data name="Sessions_ActionDelete" xml:space="preserve"><value>Delete session</value></data>
+  <data name="Sessions_ActionBack" xml:space="preserve"><value>Back</value></data>
+  <data name="Sessions_DeleteConfirm" xml:space="preserve"><value>Delete the workspace and session record {0}?</value></data>
+  <data name="Sessions_Deleted" xml:space="preserve"><value>Session {0} deleted.</value></data>
+  <data name="Recovery_Title" xml:space="preserve"><value>Session recovery</value></data>
+  <data name="Recovery_Result" xml:space="preserve"><value>Inspected: {0}; recovered: {1}; orphaned: {2}; failed: {3}.</value></data>
+  <data name="Cleanup_Title" xml:space="preserve"><value>Safe cleanup</value></data>
+  <data name="Cleanup_None" xml:space="preserve"><value>No eligible workspaces were found.</value></data>
+  <data name="Cleanup_Preview" xml:space="preserve"><value>Workspaces found: {0}; total size: {1}.</value></data>
+  <data name="Cleanup_Confirm" xml:space="preserve"><value>Delete the displayed workspaces?</value></data>
+  <data name="Cleanup_Result" xml:space="preserve"><value>Cleaned: {0}; reclaimed: {1}.</value></data>
+  <data name="Cache_Title" xml:space="preserve"><value>Managed cache</value></data>
+  <data name="Cache_Empty" xml:space="preserve"><value>The cache is empty.</value></data>
+  <data name="Cache_ActionClean" xml:space="preserve"><value>Clean cache</value></data>
+  <data name="Cache_ActionBack" xml:space="preserve"><value>Back</value></data>
+  <data name="Cache_Result" xml:space="preserve"><value>Files removed: {0}; reclaimed: {1}.</value></data>
+  <data name="Updates_Title" xml:space="preserve"><value>Updates</value></data>
+  <data name="Updates_Status" xml:space="preserve"><value>Update status</value></data>
+  <data name="Updates_Check" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="Updates_Install" xml:space="preserve"><value>Install available update</value></data>
+  <data name="Updates_Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Report_Title" xml:space="preserve"><value>SANDFORGE SESSION REPORT</value></data>
+  <data name="Report_Offline" xml:space="preserve"><value>Self-contained report with no external resources.</value></data>
+  <data name="Report_Session" xml:space="preserve"><value>Session</value></data>
+  <data name="Report_Template" xml:space="preserve"><value>Template</value></data>
+  <data name="Report_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Report_Risk" xml:space="preserve"><value>Risk</value></data>
+  <data name="Report_TargetHash" xml:space="preserve"><value>Target SHA-256</value></data>
+  <data name="Report_Artifacts" xml:space="preserve"><value>Artifacts</value></data>
+  <data name="Report_Collectors" xml:space="preserve"><value>Collector results</value></data>
+  <data name="Report_Cleanup" xml:space="preserve"><value>Cleanup</value></data>
+  <data name="Report_Error" xml:space="preserve"><value>Error</value></data>
+  <data name="Report_Collector" xml:space="preserve"><value>Collector</value></data>
+  <data name="Report_Changes" xml:space="preserve"><value>Changes</value></data>
+  <data name="Report_File" xml:space="preserve"><value>File</value></data>
+  <data name="Report_State" xml:space="preserve"><value>State</value></data>
+  <data name="Report_Type" xml:space="preserve"><value>Type</value></data>
+  <data name="Report_Path" xml:space="preserve"><value>Path</value></data>
+  <data name="Report_Size" xml:space="preserve"><value>Size</value></data>
+  <data name="Report_Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Report_CollectorError" xml:space="preserve"><value>error</value></data>
+  <data name="Status_Created" xml:space="preserve"><value>Created</value></data>
+  <data name="Status_Validating" xml:space="preserve"><value>Validating</value></data>
+  <data name="Status_Preparing" xml:space="preserve"><value>Preparing</value></data>
+  <data name="Status_Ready" xml:space="preserve"><value>Ready</value></data>
+  <data name="Status_Starting" xml:space="preserve"><value>Starting</value></data>
+  <data name="Status_Running" xml:space="preserve"><value>Running</value></data>
+  <data name="Status_Stopping" xml:space="preserve"><value>Stopping</value></data>
+  <data name="Status_Collecting" xml:space="preserve"><value>Collecting</value></data>
+  <data name="Status_Completed" xml:space="preserve"><value>Completed</value></data>
+  <data name="Status_Partial" xml:space="preserve"><value>Partial</value></data>
+  <data name="Status_Failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="Status_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Status_TimedOut" xml:space="preserve"><value>Timed out</value></data>
+  <data name="Status_Orphaned" xml:space="preserve"><value>Orphaned</value></data>
+  <data name="Risk_Low" xml:space="preserve"><value>Low</value></data>
+  <data name="Risk_Medium" xml:space="preserve"><value>Medium</value></data>
+  <data name="Risk_High" xml:space="preserve"><value>High</value></data>
+  <data name="Risk_Critical" xml:space="preserve"><value>Critical</value></data>
+  <data name="Cleanup_Pending" xml:space="preserve"><value>Pending</value></data>
+  <data name="Cleanup_Kept" xml:space="preserve"><value>Kept</value></data>
+  <data name="Cleanup_Cleaned" xml:space="preserve"><value>Cleaned</value></data>
+  <data name="Network_Disabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="Network_Enabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="Network_Required" xml:space="preserve"><value>Required</value></data>
+  <data name="Clipboard_Disabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="Clipboard_Enabled" xml:space="preserve"><value>Enabled</value></data>
+</root>
