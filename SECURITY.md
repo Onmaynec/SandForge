@@ -1,11 +1,11 @@
-# Security Policy
+# Политика безопасности
 
-## Supported versions
+## Поддерживаемые версии
 
-Security fixes are currently provided for the latest `0.1.x` alpha revision.
+Исправления безопасности выпускаются для последней alpha-версии ветки `0.2.x`.
 
-## Reporting a vulnerability
+## Сообщение об уязвимости
 
-Do not publish exploit details in a public issue. Use GitHub private vulnerability reporting when it is enabled for this repository, or contact the repository owner privately through their GitHub profile.
+Не публикуйте эксплуатационные детали в открытом issue. Используйте GitHub Private Vulnerability Reporting, когда он доступен, или свяжитесь с владельцем репозитория приватно.
 
-Include affected version, reproduction steps, expected impact and a minimal non-destructive proof of concept.
+Укажите версию, шаги воспроизведения, ожидаемое влияние и минимальный безопасный proof of concept.

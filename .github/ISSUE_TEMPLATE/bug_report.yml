@@ -1,0 +1,37 @@
+name: 🐛 Ошибка
+about: Сообщить о воспроизводимой проблеме SandForge
+title: "[Ошибка]: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: "Спасибо за отчёт. Не прикладывайте реальные вредоносные файлы и секреты."
+  - type: input
+    id: version
+    attributes:
+      label: Версия SandForge
+      placeholder: 0.2.0-alpha
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Что произошло?
+      description: Опишите фактическое и ожидаемое поведение.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      placeholder: "1. Выполнить...
+2. Запустить..."
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Окружение
+      description: Windows edition/build, .NET, portable mode, команда.
+    validations:
+      required: true

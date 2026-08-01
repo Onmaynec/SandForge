@@ -13,70 +13,83 @@ public sealed class SessionCoordinator(
     SessionStore sessionStore,
     string dataDirectory)
 {
-    public async Task<SessionRunResult> RunAsync(
-        string templatePath,
-        string targetPath,
-        CancellationToken cancellationToken)
+    public async Task<SessionRunResult> RunAsync(string templatePath, string targetPath, CancellationToken cancellationToken)
     {
         TemplateDefinition template = await templateEngine.LoadAsync(templatePath, cancellationToken);
         SessionPlan plan = await sessionPlanner.CreateAsync(template, targetPath, cancellationToken);
         SessionWorkspace workspace = await workspaceManager.PrepareAsync(plan, dataDirectory, cancellationToken);
         string configurationPath = await configurationGenerator.GenerateAsync(plan, workspace, cancellationToken);
-
         var session = new SandboxSession
         {
-            Id = plan.SessionId,
-            TemplateId = plan.TemplateName,
-            CreatedAt = DateTimeOffset.UtcNow,
-            Status = SessionStatus.Ready,
-            WorkspacePath = workspace.Root,
-            ConfigurationPath = configurationPath,
-            TargetFileHash = plan.TargetSha256,
-            Risk = plan.Security.Risk
+            Id = plan.SessionId, TemplateId = plan.TemplateName, CreatedAt = DateTimeOffset.UtcNow,
+            Status = SessionStatus.Ready, WorkspacePath = workspace.Root, ConfigurationPath = configurationPath,
+            TargetFileHash = plan.TargetSha256, Risk = plan.Security.Risk,
+            Cleanup = plan.Session.KeepWorkspace ? CleanupState.Kept : CleanupState.Pending
         };
         await sessionStore.SaveAsync(session, cancellationToken);
 
         SandboxAvailabilityResult availability = await sandboxBackend.CheckAvailabilityAsync(cancellationToken);
-        if (!availability.IsAvailable)
-        {
-            session = session with { Status = SessionStatus.Failed, EndedAt = DateTimeOffset.UtcNow, Error = availability.Message };
-            await sessionStore.SaveAsync(session, cancellationToken);
-            return new SessionRunResult(session, null);
-        }
+        if (!availability.IsAvailable) return await FailAsync(session, availability.Message, cancellationToken);
 
         session = session with { Status = SessionStatus.Starting, StartedAt = DateTimeOffset.UtcNow };
         await sessionStore.SaveAsync(session, cancellationToken);
         SandboxLaunchResult launch = await sandboxBackend.LaunchAsync(configurationPath, cancellationToken);
-        if (!launch.Started)
-        {
-            session = session with { Status = SessionStatus.Failed, EndedAt = DateTimeOffset.UtcNow, Error = launch.Message };
-            await sessionStore.SaveAsync(session, cancellationToken);
-            return new SessionRunResult(session, null);
-        }
+        if (!launch.Started) return await FailAsync(session, launch.Message, cancellationToken);
 
-        session = session with { Status = SessionStatus.Running };
+        session = session with { Status = SessionStatus.Running, SandboxProcessId = launch.ProcessId };
         await sessionStore.SaveAsync(session, cancellationToken);
-
         string marker = Path.Combine(workspace.Output, ".sandforge", "completed.json");
-        bool completed = await WaitForCompletionAsync(marker, plan.Session.Timeout, cancellationToken);
-        if (!completed)
+        if (!await WaitForCompletionAsync(marker, plan.Session.Timeout, cancellationToken))
         {
-            session = session with { Status = SessionStatus.TimedOut, EndedAt = DateTimeOffset.UtcNow, Error = "Completion marker was not received before timeout." };
+            ArtifactImportResult partialImport;
+            try { partialImport = await artifactManager.ImportAsync(workspace, cancellationToken); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                partialImport = new ArtifactImportResult(Array.Empty<SessionArtifact>(), Array.Empty<CollectorResult>());
+            }
+            session = session with
+            {
+                Status = SessionStatus.TimedOut,
+                EndedAt = DateTimeOffset.UtcNow,
+                Artifacts = partialImport.Artifacts,
+                Collectors = partialImport.Collectors,
+                Error = "Маркер завершения не получен до истечения timeout."
+            };
             await sessionStore.SaveAsync(session, cancellationToken);
             return new SessionRunResult(session, null);
         }
 
         CompletionMarker completion = await ReadMarkerAsync(marker, plan.SessionId, cancellationToken);
-        IReadOnlyList<SessionArtifact> artifacts = await artifactManager.ImportAsync(workspace, cancellationToken);
+        session = session with { Status = SessionStatus.Collecting };
+        await sessionStore.SaveAsync(session, cancellationToken);
+        ArtifactImportResult imported = await artifactManager.ImportAsync(workspace, cancellationToken);
         session = session with
         {
             Status = completion.TargetExitCode == 0 ? SessionStatus.Completed : SessionStatus.Partial,
             EndedAt = DateTimeOffset.UtcNow,
-            Artifacts = artifacts,
-            Error = completion.TargetExitCode == 0 ? null : $"Target exited with code {completion.TargetExitCode}."
+            Artifacts = imported.Artifacts,
+            Collectors = imported.Collectors,
+            Error = completion.TargetExitCode == 0 ? null : $"Целевой процесс завершился с кодом {completion.TargetExitCode}."
         };
         await sessionStore.SaveAsync(session, cancellationToken);
         return new SessionRunResult(session, null);
+    }
+
+    private async Task<SessionRunResult> FailAsync(SandboxSession session, string error, CancellationToken cancellationToken)
+    {
+        session = session with { Status = SessionStatus.Failed, EndedAt = DateTimeOffset.UtcNow, Error = error };
+        await sessionStore.SaveAsync(session, cancellationToken);
+        return new SessionRunResult(session, null);
+    }
+
+    internal static async Task<CompletionMarker> ReadMarkerAsync(string path, string expectedSessionId, CancellationToken cancellationToken)
+    {
+        await using FileStream stream = File.OpenRead(path);
+        CompletionMarker marker = await JsonSerializer.DeserializeAsync<CompletionMarker>(stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }, cancellationToken)
+            ?? throw new InvalidDataException("Маркер завершения пуст.");
+        if (marker.SchemaVersion != 1 || !marker.SessionId.Equals(expectedSessionId, StringComparison.Ordinal))
+            throw new InvalidDataException("Маркер завершения не прошёл проверку.");
+        return marker;
     }
 
     private static async Task<bool> WaitForCompletionAsync(string marker, TimeSpan timeout, CancellationToken cancellationToken)
@@ -91,15 +104,5 @@ public sealed class SessionCoordinator(
         return false;
     }
 
-    private static async Task<CompletionMarker> ReadMarkerAsync(string path, string expectedSessionId, CancellationToken cancellationToken)
-    {
-        await using FileStream stream = File.OpenRead(path);
-        CompletionMarker marker = await JsonSerializer.DeserializeAsync<CompletionMarker>(stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }, cancellationToken)
-            ?? throw new InvalidDataException("Completion marker is empty.");
-        if (marker.SchemaVersion != 1 || !marker.SessionId.Equals(expectedSessionId, StringComparison.Ordinal))
-            throw new InvalidDataException("Completion marker validation failed.");
-        return marker;
-    }
-
-    private sealed record CompletionMarker(int SchemaVersion, string SessionId, int TargetExitCode);
+    internal sealed record CompletionMarker(int SchemaVersion, string SessionId, int TargetExitCode);
 }

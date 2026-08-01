@@ -4,6 +4,7 @@ public enum NetworkPolicy { Disabled, Enabled, Required }
 public enum ClipboardPolicy { Disabled, Enabled }
 public enum MountMode { ReadOnly, ReadWrite, CopyIn, CopyOut }
 public enum RiskLevel { Low, Medium, High, Critical }
+public enum CleanupState { Pending, Kept, Cleaned }
 public enum SessionStatus
 {
     Created, Validating, Preparing, Ready, Starting, Running, Stopping,
@@ -69,6 +70,7 @@ public sealed record SessionPlan
     public required SessionSettings Session { get; init; }
     public required IReadOnlyList<SessionMount> Mounts { get; init; }
     public required TargetDefinition Target { get; init; }
+    public required IReadOnlyList<string> ArtifactCollectors { get; init; }
     public required SecurityEvaluationResult Security { get; init; }
 }
 
@@ -82,6 +84,18 @@ public sealed record SessionWorkspace
     public required string Artifacts { get; init; }
     public required string Logs { get; init; }
     public required string Metadata { get; init; }
+
+    public static SessionWorkspace FromRoot(string root) => new()
+    {
+        Root = root,
+        Input = Path.Combine(root, "input"),
+        Output = Path.Combine(root, "output"),
+        Bootstrap = Path.Combine(root, "bootstrap"),
+        Config = Path.Combine(root, "config"),
+        Artifacts = Path.Combine(root, "artifacts"),
+        Logs = Path.Combine(root, "logs"),
+        Metadata = Path.Combine(root, "metadata")
+    };
 }
 
 public sealed record SessionArtifact
@@ -93,6 +107,18 @@ public sealed record SessionArtifact
     public required string Sha256 { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
 }
+
+public sealed record CollectorResult
+{
+    public required string Id { get; init; }
+    public required string RelativePath { get; init; }
+    public int ItemCount { get; init; }
+    public string? Error { get; init; }
+}
+
+public sealed record ArtifactImportResult(
+    IReadOnlyList<SessionArtifact> Artifacts,
+    IReadOnlyList<CollectorResult> Collectors);
 
 public sealed record SandboxSession
 {
@@ -106,10 +132,16 @@ public sealed record SandboxSession
     public required string ConfigurationPath { get; init; }
     public required string TargetFileHash { get; init; }
     public required RiskLevel Risk { get; init; }
+    public int? SandboxProcessId { get; init; }
     public IReadOnlyList<SessionArtifact> Artifacts { get; init; } = Array.Empty<SessionArtifact>();
+    public IReadOnlyList<CollectorResult> Collectors { get; init; } = Array.Empty<CollectorResult>();
+    public CleanupState Cleanup { get; init; } = CleanupState.Pending;
     public string? Error { get; init; }
 }
 
+public sealed record CleanupCandidate(string SessionId, string WorkspacePath, long SizeBytes, SessionStatus Status);
+public sealed record CleanupResult(IReadOnlyList<CleanupCandidate> Candidates, int CleanedCount, long ReclaimedBytes, bool DryRun);
+public sealed record RecoveryResult(int Inspected, int Recovered, int Orphaned, int Failed);
 public sealed record SandboxAvailabilityResult(bool IsAvailable, string Message);
 public sealed record SandboxLaunchResult(bool Started, int? ProcessId, string Message);
 public sealed record SessionRunResult(SandboxSession Session, string? ReportPath);

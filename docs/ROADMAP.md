@@ -1,38 +1,45 @@
-# 🗺️ Roadmap
+# 🗺️ Roadmap SandForge
 
-## 0.1.0 — Safe vertical slice
+## ✅ 0.1.0-alpha — Безопасный сквозной сценарий
 
-- [x] domain models and interfaces;
-- [x] constrained template engine;
-- [x] security policy evaluation;
+- [x] доменные модели и контракты;
+- [x] ограниченный безопасный Template Engine;
+- [x] Security Policy Engine;
 - [x] session workspace;
-- [x] `.wsb` generation and launch;
-- [x] guest bootstrap and completion marker;
-- [x] user-output import and SHA-256;
-- [x] console/JSON/HTML reports;
-- [x] build, test and release workflows.
+- [x] генерация `.wsb` и запуск Windows Sandbox;
+- [x] guest bootstrap и completion marker;
+- [x] импорт user-output с SHA-256;
+- [x] console/JSON/HTML-отчёты;
+- [x] CI и portable packaging.
 
-## 0.2.0 — Installer visibility
+## ✅ 0.2.0-alpha — Видимость изменений установщика
 
-- [ ] SQLite storage and migrations;
-- [ ] process and installed-app collectors;
-- [ ] file, registry, service and scheduled-task snapshots;
-- [ ] installer before/after report;
-- [ ] crash recovery and cleanup commands.
+- [x] SQLite-хранилище и схема миграций;
+- [x] автоматический импорт истории `index.json`;
+- [x] process и installed-app collectors;
+- [x] file/registry/service/scheduled-task snapshots;
+- [x] before/after JSON-diff;
+- [x] команда `test-installer`;
+- [x] отчёт по результатам коллекторов;
+- [x] crash recovery;
+- [x] cleanup и dry-run;
+- [x] русская документация и CLI по умолчанию.
 
-## 0.3.0 — Reproducible development environments
+## 🧪 0.3.0 — Воспроизводимые среды разработки
 
-- [ ] package provisioning;
-- [ ] includes and inheritance;
+- [ ] package provisioning внутри Sandbox;
+- [ ] includes и наследование шаблонов;
 - [ ] matrix runner;
-- [ ] managed cache;
-- [ ] full Spectre.Console TUI;
-- [ ] complete RU/EN resources.
+- [ ] управляемый cache;
+- [ ] полноценный Spectre.Console TUI;
+- [ ] ресурсная локализация RU/EN.
 
-## 1.0.0 — Stable platform
+## 🎯 1.0.0 — Стабильная платформа
 
-- [ ] stable schemas and compatibility policy;
-- [ ] signed templates and releases;
-- [ ] collector SDK;
-- [ ] multiple sandbox backends;
-- [ ] externally reviewed security model.
+- [ ] стабильные схемы и compatibility policy;
+- [ ] подпись шаблонов и релизов;
+- [ ] Collector SDK;
+- [ ] несколько sandbox backends;
+- [ ] внешний security review.
+
+Каждый пункт roadmap представлен отдельной задачей в GitHub Issues с критериями готовности.

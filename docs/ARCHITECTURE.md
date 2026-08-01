@@ -1,57 +1,47 @@
 # 🧱 Архитектура SandForge
 
-## Цель первой итерации
+## Поток версии 0.2
 
-Версия `0.1.0-alpha` реализует один проверяемый vertical slice: создать изолированный workspace, сгенерировать `.wsb`, запустить Windows Sandbox, дождаться подписанного контекстом сессии completion marker и импортировать разрешённый output с SHA-256.
+```text
+YAML template
+  → SessionPlan + SHA-256
+  → SecurityPolicyEngine
+  → SessionWorkspace
+  → .wsb + bootstrap.ps1
+  → before snapshot
+  → target execution
+  → after snapshot + diff
+  → completion marker
+  → ArtifactManager
+  → SQLite SessionStore
+  → console / JSON / HTML report
+```
 
-## Компоненты
+## Проекты
 
 | Проект | Ответственность |
 |---|---|
-| `SandForge.Domain` | неизменяемые модели, статусы, риски и контракты |
-| `SandForge.Core` | шаблоны, безопасность, планирование, workspace, артефакты и координация |
-| `SandForge.Sandbox` | проверка доступности, `.wsb`-генератор и запуск backend |
-| `SandForge.Reporting` | console, JSON и автономный HTML |
-| `SandForge.Cli` | команды, exit codes и базовый TUI |
+| `SandForge.Domain` | модели сессий, рисков, collectors и cleanup |
+| `SandForge.Core` | шаблоны, планирование, SQLite, recovery, cleanup, импорт артефактов |
+| `SandForge.Sandbox` | доступность backend, `.wsb`, guest bootstrap и collectors |
+| `SandForge.Reporting` | русские console/JSON/HTML-отчёты |
+| `SandForge.Cli` | команды и интерактивное меню |
 
-## Поток выполнения
+## SQLite
 
-```mermaid
-sequenceDiagram
-  participant U as User
-  participant C as CLI
-  participant P as Planner
-  participant W as Workspace
-  participant S as Sandbox
-  participant G as Guest bootstrap
-  participant A as Artifact manager
+`SessionStore` создаёт `sandforge.db` и таблицы:
 
-  U->>C: sandforge run file.exe
-  C->>P: template + target
-  P->>P: hash + security evaluation
-  P->>W: prepare session directories
-  W->>S: generate .wsb + bootstrap
-  S->>G: launch session
-  G->>G: execute target
-  G-->>S: completed.json
-  S->>A: import allowed output
-  A-->>C: manifest + SHA-256
-```
+- `MigrationHistory`;
+- `Sessions`;
+- `SessionArtifacts`;
+- `CollectorResults`.
 
-## Границы доверия
+Запись сессии и связанных результатов выполняется транзакционно. Старая история `sessions/index.json` импортируется один раз и переименовывается в `index.json.migrated`.
 
-1. **Host input** никогда не запускается напрямую — сначала копируется в session input.
-2. **Guest output** считается недоверенным.
-3. **Completion marker** принимается только при совпадении `schemaVersion` и `sessionId`.
-4. **Artifacts** импортируются с квотами, проверкой пути и SHA-256.
-5. **Writable mounts** проходят отдельную security evaluation; критические пути блокируются.
+## Guest collectors
 
-## Осознанные упрощения alpha
+Коллекторы генерируются как часть bootstrap и выполняются только внутри guest. Host не сканирует процессы, реестр или установленные приложения основной системы.
 
-- constrained YAML parser вместо полного YAML 1.2;
-- JSON-индекс истории вместо SQLite;
-- один backend Windows Sandbox;
-- user-output collector вместо полного набора collectors;
-- простой Console TUI без сторонних UI-зависимостей.
+## Recovery
 
-Эти решения уменьшают площадь атаки и позволяют сначала проверить ключевой end-to-end сценарий.
+Host считает активными записи `Starting`, `Running` и `Collecting`. Если после перезапуска найден валидный marker, артефакты импортируются. При отсутствии marker сессия помечается `Orphaned` и не удаляется автоматически.

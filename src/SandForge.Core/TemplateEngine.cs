@@ -15,7 +15,7 @@ public sealed class TemplateEngine : ITemplateEngine
         string fullPath = Path.GetFullPath(path);
         if (!File.Exists(fullPath))
         {
-            throw new FileNotFoundException("Template file was not found.", fullPath);
+            throw new FileNotFoundException("Файл шаблона не найден.", fullPath);
         }
 
         string[] lines = await File.ReadAllLinesAsync(fullPath, cancellationToken);
@@ -142,9 +142,9 @@ public sealed class TemplateEngine : ITemplateEngine
         }
 
         FlushMount();
-        if (schemaVersion != 1) throw new InvalidDataException($"Unsupported template schemaVersion: {schemaVersion}.");
-        if (memoryMb < 1024) throw new InvalidDataException("sandbox.memoryMb must be at least 1024.");
-        if (timeout <= TimeSpan.Zero) throw new InvalidDataException("session.timeout must be positive.");
+        if (schemaVersion != 1) throw new InvalidDataException($"Неподдерживаемая версия схемы шаблона: {schemaVersion}.");
+        if (memoryMb < 1024) throw new InvalidDataException("sandbox.memoryMb должен быть не меньше 1024.");
+        if (timeout <= TimeSpan.Zero) throw new InvalidDataException("session.timeout должен быть положительным.");
 
         return new TemplateDefinition
         {
@@ -173,7 +173,7 @@ public sealed class TemplateEngine : ITemplateEngine
         {
             if (currentMount is null) return;
             if (string.IsNullOrWhiteSpace(currentMount.Source) || string.IsNullOrWhiteSpace(currentMount.Destination))
-                throw new InvalidDataException("Each mount requires source and destination.");
+                throw new InvalidDataException("Для каждого mount требуются source и destination.");
             mounts.Add(new MountDefinition(currentMount.Source, currentMount.Destination, currentMount.Mode));
             currentMount = null;
         }
@@ -226,15 +226,15 @@ public sealed class TemplateEngine : ITemplateEngine
     {
         string normalized = Unquote(value).Replace("-", string.Empty, StringComparison.Ordinal);
         if (!Enum.TryParse(normalized, true, out T result))
-            throw new InvalidDataException($"Invalid {typeof(T).Name} value: {value}.");
+            throw new InvalidDataException($"Недопустимое значение {typeof(T).Name}: {value}.");
         return result;
     }
 
     private static int ParseInt(string value, string key) =>
-        int.TryParse(Unquote(value), out int result) ? result : throw new InvalidDataException($"{key} must be an integer.");
+        int.TryParse(Unquote(value), out int result) ? result : throw new InvalidDataException($"{key} должен быть целым числом.");
 
     private static bool ParseBool(string value, string key) =>
-        bool.TryParse(Unquote(value), out bool result) ? result : throw new InvalidDataException($"{key} must be true or false.");
+        bool.TryParse(Unquote(value), out bool result) ? result : throw new InvalidDataException($"{key} должен иметь значение true или false.");
 
     private static TimeSpan ParseDuration(string value)
     {
@@ -242,7 +242,7 @@ public sealed class TemplateEngine : ITemplateEngine
         if (text.EndsWith('m') && double.TryParse(text[..^1], out double minutes)) return TimeSpan.FromMinutes(minutes);
         if (text.EndsWith('h') && double.TryParse(text[..^1], out double hours)) return TimeSpan.FromHours(hours);
         if (TimeSpan.TryParse(text, out TimeSpan parsed)) return parsed;
-        throw new InvalidDataException($"Invalid duration: {value}.");
+        throw new InvalidDataException($"Недопустимая длительность: {value}.");
     }
 
     private sealed class MountBuilder
