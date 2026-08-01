@@ -1,11 +1,11 @@
 <p align="center">
-
+  <img src="assets/logo.svg" alt="SandForge" width="720">
 </p>
 
 <p align="center">
   <a href="../../actions/workflows/build.yml"><img alt="Сборка" src="https://img.shields.io/github/actions/workflow/status/Onmaynec/SandForge/build.yml?branch=main&label=сборка"></a>
   <a href="../../actions/workflows/test.yml"><img alt="Тесты" src="https://img.shields.io/github/actions/workflow/status/Onmaynec/SandForge/test.yml?branch=main&label=тесты"></a>
-  <img alt="Версия" src="https://img.shields.io/badge/версия-0.2.0--alpha-ff9f43">
+  <img alt="Версия" src="https://img.shields.io/badge/версия-0.3.0--alpha-ff9f43">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8.0-512BD4">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4">
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/лицензия-MIT-green"></a>
@@ -21,9 +21,20 @@
 
 ## 📌 Текущая версия
 
-**`0.2.0-alpha` — Installer visibility.**
+**`0.3.0-alpha` — Provisioning, Matrix и GitHub Updates.**
 
-Вторая версия добавляет полноценную локальную историю на SQLite и снимки состояния Windows до и после запуска установщика:
+Версия `0.3.0-alpha` развивает SandForge как воспроизводимый runner и добавляет безопасное обслуживание установки:
+
+- 🧩 `extends` и `includes` для переиспользования шаблонов с защитой от циклов и path traversal;
+- 📦 package provisioning через `winget` только внутри guest;
+- 💿 локальные MSI/EXE provisioning installers с обязательной проверкой SHA-256 перед запуском;
+- 🧪 Matrix Runner для запуска одной цели по нескольким шаблонам;
+- ⚡ отдельный managed cache для NuGet, npm, pip и winget без подключения пользовательских cache;
+- 🔄 проверка и установка обновлений из GitHub Releases;
+- 🛡️ проверка release SHA-256, безопасная распаковка и rollback при неуспешном self-check;
+- ⏱️ автоматическая проверка обновлений с каналами `stable` и `preview`.
+
+Возможности `0.2.0-alpha` сохранены:
 
 - 🗄️ SQLite-хранилище с миграцией старой JSON-истории;
 - 🔎 список процессов после выполнения;
@@ -45,6 +56,9 @@ sandforge run .\Application.exe
 sandforge test-installer .\Setup.exe
 sandforge session list
 sandforge report <session-id> --format html
+sandforge matrix run .\Application.exe --templates minimal,isolated-analysis
+sandforge update check
+sandforge update install
 ```
 
 ### Проверка установщика
@@ -72,6 +86,43 @@ sandforge cleanup --orphaned --older-than 1h
 ```
 
 `--dry-run` показывает план и ничего не удаляет.
+
+## 🔄 Обновления через GitHub
+
+```powershell
+sandforge update check
+sandforge update install --yes
+sandforge update auto on
+sandforge update auto on --apply
+sandforge update channel stable
+```
+
+SandForge читает GitHub Releases репозитория `Onmaynec/SandForge`, скачивает ZIP и соответствующий `.sha256`, проверяет хеш, безопасно распаковывает package и применяет замену после завершения текущего процесса. Перед заменой создаётся backup; если новая версия не проходит `--version` self-check, файлы восстанавливаются автоматически. Автоустановка выполняется только после явного включения `update auto on --apply`.
+
+## 🧩 Шаблоны 0.3
+
+```yaml
+schemaVersion: 2
+extends: "../common/base.yaml"
+metadata:
+  name: build-test
+  displayName: Build test
+sandbox:
+  network: enabled
+provisioning:
+  failurePolicy: stop
+  packages:
+    - id: Microsoft.DotNet.SDK.8
+      version: "8.0.0"
+      source: winget
+cache:
+  enabled: true
+  maximumSizeMb: 2048
+  types:
+    - nuget
+```
+
+Ссылки `extends/includes` разрешаются только внутри корня `templates`; циклы и выход через `..` за доверенный корень блокируются.
 
 ## 🔐 Безопасность по умолчанию
 
@@ -132,7 +183,7 @@ dotnet run --project src/SandForge.Cli -- --help
 Portable ZIP:
 
 ```powershell
-.\scripts\package.ps1 -Version 0.2.0-alpha
+.\scripts\package.ps1 -Version 0.3.0-alpha
 ```
 
 ## ⚠️ Ограничения alpha

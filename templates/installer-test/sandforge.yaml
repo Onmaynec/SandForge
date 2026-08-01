@@ -1,20 +1,14 @@
-schemaVersion: 1
+schemaVersion: 2
+extends: "../common/base.yaml"
 metadata:
   name: installer-test
   displayName: Проверка установщика
   description: Снимки состояния до и после запуска установщика
-sandbox:
-  network: disabled
-  clipboard: disabled
-  protectedClient: true
-  memoryMb: 4096
 session:
   timeout: 30m
-  keepWorkspace: false
 target:
   executable: "C:\\Sandbox\\Input\\${targetFileName}"
   workingDirectory: "C:\\Sandbox\\Input"
-  arguments:
 artifacts:
   collectors:
     - process-list

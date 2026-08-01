@@ -5,6 +5,7 @@ public enum ClipboardPolicy { Disabled, Enabled }
 public enum MountMode { ReadOnly, ReadWrite, CopyIn, CopyOut }
 public enum RiskLevel { Low, Medium, High, Critical }
 public enum CleanupState { Pending, Kept, Cleaned }
+public enum ProvisioningFailurePolicy { Stop, Continue }
 public enum SessionStatus
 {
     Created, Validating, Preparing, Ready, Starting, Running, Stopping,
@@ -37,6 +38,35 @@ public sealed record TargetDefinition
     public bool Wait { get; init; } = true;
 }
 
+public sealed record PackageDefinition
+{
+    public required string Id { get; init; }
+    public string? Version { get; init; }
+    public string Source { get; init; } = "winget";
+}
+
+public sealed record InstallerDefinition
+{
+    public required string SourcePath { get; init; }
+    public string? Sha256 { get; init; }
+    public IReadOnlyList<string> Arguments { get; init; } = Array.Empty<string>();
+    public TimeSpan Timeout { get; init; } = TimeSpan.FromMinutes(10);
+}
+
+public sealed record ProvisioningSettings
+{
+    public ProvisioningFailurePolicy FailurePolicy { get; init; } = ProvisioningFailurePolicy.Stop;
+    public IReadOnlyList<PackageDefinition> Packages { get; init; } = Array.Empty<PackageDefinition>();
+    public IReadOnlyList<InstallerDefinition> Installers { get; init; } = Array.Empty<InstallerDefinition>();
+}
+
+public sealed record CacheSettings
+{
+    public bool Enabled { get; init; }
+    public int MaximumSizeMb { get; init; } = 2048;
+    public IReadOnlyList<string> Types { get; init; } = Array.Empty<string>();
+}
+
 public sealed record TemplateDefinition
 {
     public int SchemaVersion { get; init; } = 1;
@@ -46,6 +76,9 @@ public sealed record TemplateDefinition
     public IReadOnlyList<MountDefinition> Mounts { get; init; } = Array.Empty<MountDefinition>();
     public TargetDefinition Target { get; init; } = new();
     public IReadOnlyList<string> ArtifactCollectors { get; init; } = ["user-output"];
+    public ProvisioningSettings Provisioning { get; init; } = new();
+    public CacheSettings Cache { get; init; } = new();
+    public IReadOnlyList<string> Sources { get; init; } = Array.Empty<string>();
 }
 
 public sealed record SecurityFinding(RiskLevel Level, string Code, string Message, bool BlocksLaunch);
@@ -59,6 +92,15 @@ public sealed record SecurityEvaluationResult
 
 public sealed record SessionMount(string HostPath, string GuestPath, MountMode Mode);
 
+public sealed record ProvisioningInstallerPlan
+{
+    public required string SourcePath { get; init; }
+    public required string GuestPath { get; init; }
+    public required string Sha256 { get; init; }
+    public required IReadOnlyList<string> Arguments { get; init; }
+    public required TimeSpan Timeout { get; init; }
+}
+
 public sealed record SessionPlan
 {
     public required string SessionId { get; init; }
@@ -69,8 +111,12 @@ public sealed record SessionPlan
     public required SandboxSettings Sandbox { get; init; }
     public required SessionSettings Session { get; init; }
     public required IReadOnlyList<SessionMount> Mounts { get; init; }
+    public required IReadOnlyList<SessionMount> CacheMounts { get; init; }
     public required TargetDefinition Target { get; init; }
     public required IReadOnlyList<string> ArtifactCollectors { get; init; }
+    public required ProvisioningFailurePolicy ProvisioningFailurePolicy { get; init; }
+    public required IReadOnlyList<PackageDefinition> Packages { get; init; }
+    public required IReadOnlyList<ProvisioningInstallerPlan> Installers { get; init; }
     public required SecurityEvaluationResult Security { get; init; }
 }
 
@@ -145,3 +191,14 @@ public sealed record RecoveryResult(int Inspected, int Recovered, int Orphaned, 
 public sealed record SandboxAvailabilityResult(bool IsAvailable, string Message);
 public sealed record SandboxLaunchResult(bool Started, int? ProcessId, string Message);
 public sealed record SessionRunResult(SandboxSession Session, string? ReportPath);
+
+public sealed record CacheEntry(string Type, string Path, long SizeBytes, DateTimeOffset LastWriteTime);
+public sealed record CacheCleanupResult(int RemovedEntries, long ReclaimedBytes, bool DryRun);
+public sealed record UpdateCheckResult(
+    string CurrentVersion,
+    string? LatestVersion,
+    bool IsUpdateAvailable,
+    string? PackageUrl,
+    string? ChecksumUrl,
+    string Message);
+public sealed record UpdateApplyResult(bool Started, string Message, string? ScriptPath);

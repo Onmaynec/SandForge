@@ -1,20 +1,9 @@
-schemaVersion: 1
+schemaVersion: 2
+extends: "../common/base.yaml"
 metadata:
   name: isolated-analysis
-  displayName: Isolated Analysis
-  description: Restricted sandbox for unknown applications
-sandbox:
-  network: disabled
-  clipboard: disabled
-  protectedClient: true
-  memoryMb: 4096
-session:
-  timeout: 15m
-  keepWorkspace: false
+  displayName: Изолированный анализ
+  description: Ограниченная Sandbox для неизвестных приложений
 target:
   executable: "C:\\Sandbox\\Input\\${targetFileName}"
   workingDirectory: "C:\\Sandbox\\Input"
-  arguments:
-artifacts:
-  collectors:
-    - user-output

@@ -1,16 +1,9 @@
-schemaVersion: 1
+schemaVersion: 2
+extends: "../common/base.yaml"
 metadata:
   name: powershell-clean
-  displayName: Clean PowerShell
-  description: Runs a copied PowerShell script in an offline disposable environment
-sandbox:
-  network: disabled
-  clipboard: disabled
-  protectedClient: true
-  memoryMb: 4096
-session:
-  timeout: 15m
-  keepWorkspace: false
+  displayName: Чистый PowerShell
+  description: Запуск скопированного PowerShell-скрипта в offline Sandbox
 target:
   executable: "powershell.exe"
   workingDirectory: "C:\\Sandbox\\Input"
@@ -22,6 +15,3 @@ target:
     - "Bypass"
     - "-File"
     - "C:\\Sandbox\\Input\\${targetFileName}"
-artifacts:
-  collectors:
-    - user-output

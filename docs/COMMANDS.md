@@ -74,3 +74,33 @@ sandforge cleanup --orphaned --older-than 1h
 | `10` | сессия завершилась ошибкой |
 | `11` | timeout |
 | `12` | отменено пользователем |
+
+## Matrix Runner (`0.3.0-alpha`)
+
+```powershell
+sandforge matrix run .\Application.exe --templates minimal,isolated-analysis
+sandforge matrix run .\Application.exe --templates minimal,installer-test --parallel 2
+```
+
+Каждый шаблон создаёт отдельную сессию. Допустимый `--parallel`: от 1 до 4.
+
+## Managed cache
+
+```powershell
+sandforge cache list
+sandforge cache clean nuget --dry-run
+sandforge cache clean nuget
+sandforge cache clean
+```
+
+## Обновления GitHub Releases
+
+```powershell
+sandforge update status
+sandforge update check
+sandforge update install [--yes]
+sandforge update auto on|off [--apply]
+sandforge update channel stable|preview
+```
+
+`update check` возвращает exit code `20`, когда новая версия найдена. Это позволяет использовать проверку в скриптах.

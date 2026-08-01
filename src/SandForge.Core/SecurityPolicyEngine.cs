@@ -25,6 +25,28 @@ public sealed class SecurityPolicyEngine : ISecurityPolicyEngine
         if (template.Session.Timeout > TimeSpan.FromHours(2))
             findings.Add(new(RiskLevel.High, "LONG_TIMEOUT", "Timeout сессии превышает два часа.", false));
 
+        if (template.Provisioning.Packages.Count > 0 && template.Sandbox.Network == NetworkPolicy.Disabled)
+            findings.Add(new(RiskLevel.Critical, "PROVISIONING_NETWORK_DISABLED", "Package provisioning требует включённой сети Sandbox.", true));
+        foreach (PackageDefinition package in template.Provisioning.Packages)
+        {
+            if (!package.Source.Equals("winget", StringComparison.OrdinalIgnoreCase))
+                findings.Add(new(RiskLevel.Critical, "UNSUPPORTED_PACKAGE_SOURCE", $"Источник package provisioning не поддерживается: {package.Source}.", true));
+            if (string.IsNullOrWhiteSpace(package.Version))
+                findings.Add(new(RiskLevel.Medium, "UNPINNED_PACKAGE", $"Пакет {package.Id} не закреплён на версии.", false));
+        }
+        if (template.Provisioning.Installers.Any(x => string.IsNullOrWhiteSpace(x.Sha256)))
+            findings.Add(new(RiskLevel.Medium, "INSTALLER_HASH_AUTO", "SHA-256 локального installer будет вычислен автоматически перед запуском.", false));
+
+        if (template.Cache.Enabled)
+        {
+            findings.Add(new(RiskLevel.Medium, "MANAGED_CACHE_WRITABLE", "Включён отдельный управляемый cache с записью из guest.", false));
+            foreach (string type in template.Cache.Types)
+            {
+                if (!CacheService.AllowedTypes.Contains(type, StringComparer.OrdinalIgnoreCase))
+                    findings.Add(new(RiskLevel.Critical, "UNKNOWN_CACHE_TYPE", $"Неизвестный тип cache: {type}.", true));
+            }
+        }
+
         foreach (MountDefinition mount in template.Mounts)
         {
             string expanded = Environment.ExpandEnvironmentVariables(mount.Source);

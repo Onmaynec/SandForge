@@ -63,13 +63,16 @@ public sealed class SessionCoordinator(
         session = session with { Status = SessionStatus.Collecting };
         await sessionStore.SaveAsync(session, cancellationToken);
         ArtifactImportResult imported = await artifactManager.ImportAsync(workspace, cancellationToken);
+        bool collectorFailed = imported.Collectors.Any(x => !string.IsNullOrWhiteSpace(x.Error));
         session = session with
         {
-            Status = completion.TargetExitCode == 0 ? SessionStatus.Completed : SessionStatus.Partial,
+            Status = completion.TargetExitCode == 0 && !collectorFailed ? SessionStatus.Completed : SessionStatus.Partial,
             EndedAt = DateTimeOffset.UtcNow,
             Artifacts = imported.Artifacts,
             Collectors = imported.Collectors,
-            Error = completion.TargetExitCode == 0 ? null : $"Целевой процесс завершился с кодом {completion.TargetExitCode}."
+            Error = completion.TargetExitCode != 0
+                ? $"Целевой процесс завершился с кодом {completion.TargetExitCode}."
+                : collectorFailed ? "Один или несколько collectors завершились с ошибкой." : null
         };
         await sessionStore.SaveAsync(session, cancellationToken);
         return new SessionRunResult(session, null);

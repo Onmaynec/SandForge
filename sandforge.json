@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "storage": {
     "retentionDays": 30,
     "maximumWorkspaceSizeMb": 8192,
@@ -18,13 +18,25 @@
     "allowSystemDriveMount": false,
     "allowNoTimeout": false
   },
+  "cache": {
+    "root": "%LocalAppData%\\SandForge\\cache",
+    "allowedTypes": ["nuget", "npm", "pip", "winget"],
+    "defaultMaximumSizeMb": 2048
+  },
+  "updates": {
+    "repository": "Onmaynec/SandForge",
+    "channel": "preview",
+    "autoCheck": true,
+    "autoApply": false,
+    "intervalHours": 24
+  },
   "privacy": {
     "storeMachineName": false,
     "storeUserName": false,
     "redactHostPaths": true
   },
   "ui": {
-    "language": "auto",
+    "language": "ru",
     "theme": "dark",
     "animations": false
   }

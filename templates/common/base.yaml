@@ -1,0 +1,16 @@
+schemaVersion: 2
+sandbox:
+  network: disabled
+  clipboard: disabled
+  protectedClient: true
+  memoryMb: 4096
+session:
+  timeout: 15m
+  keepWorkspace: false
+cache:
+  enabled: false
+  maximumSizeMb: 2048
+  types:
+artifacts:
+  collectors:
+    - user-output

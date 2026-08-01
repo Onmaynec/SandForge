@@ -1,19 +1,13 @@
-schemaVersion: 1
+schemaVersion: 2
+extends: "../common/base.yaml"
 metadata:
   name: minimal
-  displayName: Minimal
-  description: Minimal offline Windows Sandbox launch
+  displayName: Минимальный
+  description: Минимальный offline-запуск Windows Sandbox
 sandbox:
-  network: disabled
-  clipboard: disabled
-  protectedClient: true
   memoryMb: 2048
 session:
   timeout: 10m
-  keepWorkspace: false
 target:
   executable: "C:\\Sandbox\\Input\\${targetFileName}"
   workingDirectory: "C:\\Sandbox\\Input"
-artifacts:
-  collectors:
-    - user-output

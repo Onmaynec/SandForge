@@ -1,3 +1,21 @@
+# Changelog
+
+## [0.3.0-alpha] - 2026-08-01
+
+### Добавлено
+- безопасные `extends` и `includes` для schemaVersion 2;
+- package и local installer provisioning внутри guest;
+- Matrix Runner с ограничением параллелизма;
+- отдельный managed cache с quota;
+- команды `update check/install/auto/channel`;
+- GitHub Releases updater с SHA-256, безопасной распаковкой и rollback;
+- документация `UPDATES`, `PROVISIONING`, `MATRIX`, `CACHE`.
+
+### Изменено
+- версия проекта повышена до `0.3.0-alpha`;
+- built-in templates переведены на наследование от общего безопасного base;
+- release workflow публикует package и checksum, совместимые с updater.
+
 # История изменений
 
 ## [0.2.0-alpha] — 2026-08-01
