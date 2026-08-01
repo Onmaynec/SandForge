@@ -9,18 +9,12 @@ public interface ITemplateEngine
 
 public interface ISecurityPolicyEngine
 {
-    Task<SecurityEvaluationResult> EvaluateAsync(
-        TemplateDefinition template,
-        string targetPath,
-        CancellationToken cancellationToken);
+    Task<SecurityEvaluationResult> EvaluateAsync(TemplateDefinition template, string targetPath, CancellationToken cancellationToken);
 }
 
 public interface ISessionPlanner
 {
-    Task<SessionPlan> CreateAsync(
-        TemplateDefinition template,
-        string targetPath,
-        CancellationToken cancellationToken);
+    Task<SessionPlan> CreateAsync(TemplateDefinition template, string targetPath, CancellationToken cancellationToken);
 }
 
 public interface IWorkspaceManager
@@ -41,5 +35,5 @@ public interface ISandboxBackend
 
 public interface IArtifactManager
 {
-    Task<IReadOnlyList<SessionArtifact>> ImportAsync(SessionWorkspace workspace, CancellationToken cancellationToken);
+    Task<ArtifactImportResult> ImportAsync(SessionWorkspace workspace, CancellationToken cancellationToken);
 }

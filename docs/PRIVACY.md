@@ -1,11 +1,12 @@
 # 🕶️ Приватность
 
-SandForge минимизирует сведения о host:
+SandForge минимизирует host-данные:
 
 - не передаёт environment variables автоматически;
+- не читает host process list, реестр или список программ;
+- collectors работают только внутри Windows Sandbox;
 - не сохраняет имя пользователя и компьютера в отчёте;
-- маскирует чувствительные пути в security findings;
-- не читает clipboard, browser profiles или host process list;
-- хранит SHA-256 и технические metadata, необходимые для воспроизводимости.
+- не читает clipboard и browser profiles;
+- хранит локально только технические данные сессии, SHA-256 и выбранные guest-результаты.
 
-В alpha локальная история находится в `%LocalAppData%\SandForge\sessions\index.json` или в `data\sessions\index.json` при portable mode.
+История находится в локальном SQLite-файле `sandforge.db`. Синхронизация или отправка телеметрии не выполняется.

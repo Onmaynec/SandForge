@@ -3,102 +3,150 @@
 </p>
 
 <p align="center">
-  <a href="../../actions/workflows/build.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Onmaynec/SandForge/build.yml?branch=main&label=build"></a>
-  <a href="../../actions/workflows/test.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/Onmaynec/SandForge/test.yml?branch=main&label=tests"></a>
+  <a href="../../actions/workflows/build.yml"><img alt="Сборка" src="https://img.shields.io/github/actions/workflow/status/Onmaynec/SandForge/build.yml?branch=main&label=сборка"></a>
+  <a href="../../actions/workflows/test.yml"><img alt="Тесты" src="https://img.shields.io/github/actions/workflow/status/Onmaynec/SandForge/test.yml?branch=main&label=тесты"></a>
+  <img alt="Версия" src="https://img.shields.io/badge/версия-0.2.0--alpha-ff9f43">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8.0-512BD4">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4">
-  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
+  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/лицензия-MIT-green"></a>
 </p>
 
 # SandForge
 
-> **Forge disposable Windows environments.**
+> **Создавай одноразовые Windows-окружения.**
 
-SandForge creates reproducible Windows Sandbox sessions, applies safe templates, runs applications and collects selected results.
+**SandForge** — консольный менеджер для подготовки, запуска и анализа воспроизводимых сессий **Windows Sandbox**. Он копирует входной файл в отдельный workspace, применяет безопасный шаблон, запускает цель, собирает разрешённые результаты и формирует автономный отчёт.
 
-🌐 **Русская документация:** [README_RU.md](README_RU.md)
+🌐 English: [README_EN.md](README_EN.md)
 
-## ✨ What is included
+## 📌 Текущая версия
 
-This repository currently contains the **0.1.0-alpha architectural core and the first end-to-end vertical slice**:
+**`0.2.0-alpha` — Installer visibility.**
 
-- safe template loading for the constrained MVP schema;
-- session planning and SHA-256 target hashing;
-- security policy evaluation with blocked critical mounts;
-- isolated workspace preparation;
-- `.wsb` configuration generation;
-- generated PowerShell guest bootstrap;
-- Windows Sandbox launch and completion marker validation;
-- user-output artifact import with quotas and SHA-256;
-- console, JSON and standalone HTML reports;
-- a dependency-free CLI and basic interactive menu;
-- unit tests, GitHub Actions and portable ZIP packaging.
+Вторая версия добавляет полноценную локальную историю на SQLite и снимки состояния Windows до и после запуска установщика:
 
-## 🚀 Quick start
+- 🗄️ SQLite-хранилище с миграцией старой JSON-истории;
+- 🔎 список процессов после выполнения;
+- 📦 изменения установленных приложений;
+- 📁 изменения файлов в контролируемых системных каталогах;
+- 🧬 изменения выбранных разделов реестра;
+- ⚙️ изменения служб и запланированных задач;
+- 🧾 HTML/JSON/console-отчёты с результатами коллекторов;
+- 🧯 изоляция ошибок: сбой одного collector не отменяет остальные;
+- ♻️ восстановление сессий после аварийного завершения host-процесса;
+- 🧹 безопасная очистка старых и orphaned-workspace;
+- 🇷🇺 русский CLI и русская документация по умолчанию.
+
+## 🚀 Быстрый старт
 
 ```powershell
 sandforge doctor
 sandforge run .\Application.exe
+sandforge test-installer .\Setup.exe
 sandforge session list
 sandforge report <session-id> --format html
 ```
 
-To run the included safe sample:
+### Проверка установщика
 
 ```powershell
-dotnet run --project src/SandForge.Cli -- run-script .\samples\hello-output.ps1
+sandforge test-installer .\Setup.exe
 ```
 
-## 🔐 Security model
+Шаблон `installer-test` создаёт снимки до и после запуска и сохраняет JSON-diff по приложениям, файлам, реестру, службам и задачам.
 
-SandForge defaults to disabled network and clipboard, read-only input, a dedicated output directory, SHA-256 verification and a 15-minute timeout. Critical plans such as a writable system-drive mount are blocked.
+### Восстановление после сбоя
 
-> Windows Sandbox is an isolation boundary, not an absolute malware guarantee. Review exported artifacts before opening them.
+```powershell
+sandforge recover
+```
 
-## 🧱 Architecture
+Команда проверяет незавершённые записи SQLite. При наличии валидного `completed.json` результаты импортируются; иначе сессия получает статус `Orphaned`.
+
+### Очистка
+
+```powershell
+sandforge cleanup --dry-run --older-than 30d
+sandforge cleanup --older-than 30d
+sandforge cleanup --orphaned --older-than 1h
+```
+
+`--dry-run` показывает план и ничего не удаляет.
+
+## 🔐 Безопасность по умолчанию
+
+| Параметр | Значение |
+|---|---|
+| Сеть | `Disabled` |
+| Буфер обмена | `Disabled` |
+| Входные данные | копия в session workspace |
+| Host mounts | только явно заданные |
+| Output | отдельная пустая папка |
+| Timeout | обязателен |
+| Артефакты | не открываются автоматически |
+| Критические mounts | блокируются |
+
+> [!WARNING]
+> Windows Sandbox уменьшает риск, но не является абсолютной защитой от вредоносного ПО. Не запускайте экспортированные исполняемые артефакты без отдельной проверки.
+
+## 🧱 Архитектура
 
 ```mermaid
 flowchart LR
-  T[Template] --> V[Validation]
-  V --> P[Security policy]
-  P --> S[Session plan]
+  T[Шаблон YAML] --> P[План сессии]
+  P --> S[Security Policy]
   S --> W[Workspace]
-  W --> C[WSB config + bootstrap]
-  C --> B[Windows Sandbox]
-  B --> M[Completion marker]
-  M --> A[Artifact import]
-  A --> R[Reports]
+  W --> B[Windows Sandbox]
+  B --> C[Before/After collectors]
+  C --> A[Импорт артефактов]
+  A --> DB[(SQLite)]
+  DB --> R[Console / JSON / HTML]
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design details.
+Подробности: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## ⚠️ Current limitations
+## 📚 Документация
 
-This alpha is deliberately focused on the first safe vertical slice. Advanced installer diffs, registry/network collectors, package provisioning, template inheritance/includes, SQLite history and full localization are roadmap items, not completed features.
+- [Команды](docs/COMMANDS.md)
+- [Шаблоны](docs/TEMPLATES.md)
+- [Коллекторы](docs/COLLECTORS.md)
+- [SQLite и миграции](docs/STORAGE.md)
+- [Восстановление и очистка](docs/RECOVERY.md)
+- [Модель безопасности](docs/SECURITY.md)
+- [Приватность](docs/PRIVACY.md)
+- [Устранение неполадок](docs/TROUBLESHOOTING.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Backlog и GitHub Issues](docs/BACKLOG.md)
 
-## 🛠️ Build from source
+## 🛠️ Сборка
+
+Требования: Windows 10/11 x64, .NET 8 SDK и доступная функция Windows Sandbox.
 
 ```powershell
 dotnet restore
-dotnet build
-dotnet test
+dotnet build SandForge.sln -c Release
+dotnet test SandForge.sln -c Release
 dotnet run --project src/SandForge.Cli -- --help
 ```
 
-Portable package:
+Portable ZIP:
 
 ```powershell
-.\scripts\package.ps1
+.\scripts\package.ps1 -Version 0.2.0-alpha
 ```
 
-## 🗺️ Roadmap
+## ⚠️ Ограничения alpha
 
-See [docs/ROADMAP.md](docs/ROADMAP.md).
+- коллекторы выполняются внутри Windows Sandbox и отражают только guest-систему;
+- file snapshot ограничен первыми 50 000 файлами выбранных каталогов;
+- registry snapshot охватывает выбранные Run/Uninstall-разделы, а не весь реестр;
+- драйверы, обязательная перезагрузка и kernel-level изменения могут не поддерживаться Sandbox;
+- включение сети, clipboard или writable mounts уменьшает изоляцию.
 
-## 🤝 Contributing
+## 🤝 Участие и безопасность
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md) before opening a pull request.
+Правила: [CONTRIBUTING.md](CONTRIBUTING.md). Уязвимости: [SECURITY.md](SECURITY.md). Публичный backlog ведётся в GitHub Issues.
 
-## 📄 License
+## 📄 Лицензия
 
-MIT — see [LICENSE](LICENSE).
+MIT — [LICENSE](LICENSE).

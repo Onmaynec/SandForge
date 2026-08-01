@@ -19,11 +19,11 @@ public sealed class SecurityPolicyEngine : ISecurityPolicyEngine
         var findings = new List<SecurityFinding>();
 
         if (template.Sandbox.Network != NetworkPolicy.Disabled)
-            findings.Add(new(RiskLevel.Medium, "NETWORK_ENABLED", "Sandbox network access is enabled.", false));
+            findings.Add(new(RiskLevel.Medium, "NETWORK_ENABLED", "Сетевой доступ Sandbox включён.", false));
         if (template.Sandbox.Clipboard == ClipboardPolicy.Enabled)
-            findings.Add(new(RiskLevel.Medium, "CLIPBOARD_ENABLED", "Clipboard redirection is enabled.", false));
+            findings.Add(new(RiskLevel.Medium, "CLIPBOARD_ENABLED", "Перенаправление буфера обмена включено.", false));
         if (template.Session.Timeout > TimeSpan.FromHours(2))
-            findings.Add(new(RiskLevel.High, "LONG_TIMEOUT", "Session timeout exceeds two hours.", false));
+            findings.Add(new(RiskLevel.High, "LONG_TIMEOUT", "Timeout сессии превышает два часа.", false));
 
         foreach (MountDefinition mount in template.Mounts)
         {
@@ -35,14 +35,14 @@ public sealed class SecurityPolicyEngine : ISecurityPolicyEngine
             bool sensitive = root || SensitiveSegments.Any(segment => normalized.Contains(segment, StringComparison.OrdinalIgnoreCase));
 
             if (mount.Mode == MountMode.ReadWrite)
-                findings.Add(new(RiskLevel.High, "WRITABLE_HOST_MOUNT", $"Writable host mount: {Redact(fullPath)}", false));
+                findings.Add(new(RiskLevel.High, "WRITABLE_HOST_MOUNT", $"Host-папка подключена с правом записи: {Redact(fullPath)}", false));
             if (sensitive && mount.Mode == MountMode.ReadWrite)
-                findings.Add(new(RiskLevel.Critical, "SENSITIVE_WRITABLE_MOUNT", $"Blocked writable sensitive path: {Redact(fullPath)}", true));
+                findings.Add(new(RiskLevel.Critical, "SENSITIVE_WRITABLE_MOUNT", $"Заблокирован чувствительный путь с правом записи: {Redact(fullPath)}", true));
         }
 
         string extension = Path.GetExtension(targetPath);
         if (string.IsNullOrWhiteSpace(extension))
-            findings.Add(new(RiskLevel.Medium, "UNKNOWN_TARGET_TYPE", "Target has no file extension.", false));
+            findings.Add(new(RiskLevel.Medium, "UNKNOWN_TARGET_TYPE", "У целевого файла отсутствует расширение.", false));
 
         RiskLevel risk = findings.Count == 0 ? RiskLevel.Low : findings.Max(x => x.Level);
         return Task.FromResult(new SecurityEvaluationResult { Risk = risk, Findings = findings });

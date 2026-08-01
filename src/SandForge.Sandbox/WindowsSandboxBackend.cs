@@ -8,14 +8,14 @@ public sealed class WindowsSandboxBackend : ISandboxBackend
 {
     public async Task<SandboxAvailabilityResult> CheckAvailabilityAsync(CancellationToken cancellationToken)
     {
-        if (!OperatingSystem.IsWindows()) return new(false, "SandForge requires Windows 10 or Windows 11.");
-        if (!Environment.Is64BitOperatingSystem) return new(false, "A 64-bit Windows installation is required.");
+        if (!OperatingSystem.IsWindows()) return new(false, "SandForge требуется Windows 10 или Windows 11.");
+        if (!Environment.Is64BitOperatingSystem) return new(false, "Требуется 64-разрядная Windows.");
 
         string windowsSandbox = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "WindowsSandbox.exe");
-        if (File.Exists(windowsSandbox)) return new(true, "Windows Sandbox executable is available.");
+        if (File.Exists(windowsSandbox)) return new(true, "Windows Sandbox доступна.");
 
         string dism = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "dism.exe");
-        if (!File.Exists(dism)) return new(false, "DISM was not found; Windows Sandbox availability could not be checked.");
+        if (!File.Exists(dism)) return new(false, "DISM не найден; доступность Windows Sandbox проверить не удалось.");
 
         var startInfo = new ProcessStartInfo(dism)
         {
@@ -27,19 +27,22 @@ public sealed class WindowsSandboxBackend : ISandboxBackend
         startInfo.ArgumentList.Add("/Online");
         startInfo.ArgumentList.Add("/Get-FeatureInfo");
         startInfo.ArgumentList.Add("/FeatureName:Containers-DisposableClientVM");
-        using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start DISM.");
-        string output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+        using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException("Не удалось запустить DISM.");
+        Task<string> outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        Task<string> errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
         await process.WaitForExitAsync(cancellationToken);
+        string output = await outputTask;
+        _ = await errorTask;
         bool enabled = process.ExitCode == 0 && output.Contains("Enabled", StringComparison.OrdinalIgnoreCase);
         return enabled
-            ? new(true, "Windows Sandbox feature is enabled.")
-            : new(false, "Windows Sandbox feature is disabled or unsupported. Run: sandforge feature enable");
+            ? new(true, "Компонент Windows Sandbox включён.")
+            : new(false, "Компонент Windows Sandbox отключён или не поддерживается.");
     }
 
     public Task<SandboxLaunchResult> LaunchAsync(string configurationPath, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!File.Exists(configurationPath)) return Task.FromResult(new SandboxLaunchResult(false, null, "Sandbox configuration file was not found."));
+        if (!File.Exists(configurationPath)) return Task.FromResult(new SandboxLaunchResult(false, null, "Файл конфигурации Sandbox не найден."));
         try
         {
             var startInfo = new ProcessStartInfo
@@ -50,8 +53,8 @@ public sealed class WindowsSandboxBackend : ISandboxBackend
             };
             Process? process = Process.Start(startInfo);
             return Task.FromResult(process is null
-                ? new SandboxLaunchResult(false, null, "Windows did not start the .wsb configuration.")
-                : new SandboxLaunchResult(true, process.Id, "Windows Sandbox started."));
+                ? new SandboxLaunchResult(false, null, "Windows не запустила конфигурацию .wsb.")
+                : new SandboxLaunchResult(true, process.Id, "Windows Sandbox запущена."));
         }
         catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException)
         {

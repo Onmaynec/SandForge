@@ -1,4 +1,4 @@
-param([string]$Version = '0.1.0')
+param([string]$Version = '0.2.0-alpha')
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 $Out = Join-Path $Root 'artifacts'
@@ -12,7 +12,7 @@ Copy-Item (Join-Path $Root 'schemas') $Stage -Recurse
 Copy-Item (Join-Path $Root 'sandforge.json') $Stage
 Copy-Item (Join-Path $Root 'LICENSE') $Stage
 Copy-Item (Join-Path $Root 'THIRD_PARTY_NOTICES.md') $Stage
-Copy-Item (Join-Path $Root 'README_RU.md') (Join-Path $Stage 'README.txt')
+Copy-Item (Join-Path $Root 'README.md') (Join-Path $Stage 'README.txt')
 New-Item -ItemType File -Path (Join-Path $Stage 'portable.mode') -Force | Out-Null
 
 $Zip = Join-Path $Out "SandForge-$Version-win-x64.zip"

@@ -8,45 +8,34 @@ namespace SandForge.Sandbox;
 
 public sealed class SandboxConfigurationGenerator : ISandboxConfigurationGenerator
 {
-    public async Task<string> GenerateAsync(
-        SessionPlan plan,
-        SessionWorkspace workspace,
-        CancellationToken cancellationToken)
+    public async Task<string> GenerateAsync(SessionPlan plan, SessionWorkspace workspace, CancellationToken cancellationToken)
     {
-        string guestInput = @"C:\Sandbox\Input";
-        string guestOutput = @"C:\Sandbox\Output";
-        string guestBootstrap = @"C:\Sandbox\Bootstrap";
+        const string guestInput = @"C:\Sandbox\Input";
+        const string guestOutput = @"C:\Sandbox\Output";
+        const string guestBootstrap = @"C:\Sandbox\Bootstrap";
         string copiedTarget = Path.Combine(workspace.Input, plan.TargetFileName);
-        if (!File.Exists(copiedTarget)) throw new FileNotFoundException("Copied target is missing.", copiedTarget);
-
-        string bootstrapPath = Path.Combine(workspace.Bootstrap, "bootstrap.ps1");
+        if (!File.Exists(copiedTarget)) throw new FileNotFoundException("Скопированный целевой файл отсутствует.", copiedTarget);
         string targetGuestPath = string.IsNullOrWhiteSpace(plan.Target.Executable)
             ? $@"{guestInput}\{plan.TargetFileName}"
             : plan.Target.Executable.Replace("${targetFileName}", plan.TargetFileName, StringComparison.Ordinal);
-        string script = BuildBootstrap(plan, targetGuestPath, guestOutput);
-        await File.WriteAllTextAsync(bootstrapPath, script, new UTF8Encoding(false), cancellationToken);
-
+        string bootstrapPath = Path.Combine(workspace.Bootstrap, "bootstrap.ps1");
+        await File.WriteAllTextAsync(bootstrapPath, BuildBootstrap(plan, targetGuestPath, guestOutput), new UTF8Encoding(false), cancellationToken);
         string configPath = Path.Combine(workspace.Config, $"{plan.SessionId}.wsb");
-        string xml = BuildWsb(plan, workspace, guestInput, guestOutput, guestBootstrap);
-        await File.WriteAllTextAsync(configPath, xml, new UTF8Encoding(false), cancellationToken);
+        await File.WriteAllTextAsync(configPath, BuildWsb(plan, workspace, guestInput, guestOutput, guestBootstrap), new UTF8Encoding(false), cancellationToken);
         return configPath;
     }
 
     private static string BuildWsb(SessionPlan plan, SessionWorkspace workspace, string guestInput, string guestOutput, string guestBootstrap)
     {
-        string networking = plan.Sandbox.Network == NetworkPolicy.Disabled ? "Disable" : "Default";
-        string clipboard = plan.Sandbox.Clipboard == ClipboardPolicy.Disabled ? "Disable" : "Default";
-        string protectedClient = plan.Sandbox.ProtectedClient ? "Enable" : "Disable";
         string command = $@"powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File {guestBootstrap}\bootstrap.ps1";
-
         var xml = new StringBuilder();
         xml.AppendLine("<Configuration>");
-        xml.AppendLine($"  <Networking>{networking}</Networking>");
-        xml.AppendLine($"  <ClipboardRedirection>{clipboard}</ClipboardRedirection>");
+        xml.AppendLine($"  <Networking>{(plan.Sandbox.Network == NetworkPolicy.Disabled ? "Disable" : "Default")}</Networking>");
+        xml.AppendLine($"  <ClipboardRedirection>{(plan.Sandbox.Clipboard == ClipboardPolicy.Disabled ? "Disable" : "Default")}</ClipboardRedirection>");
         xml.AppendLine("  <PrinterRedirection>Disable</PrinterRedirection>");
         xml.AppendLine("  <AudioInput>Disable</AudioInput>");
         xml.AppendLine("  <VideoInput>Disable</VideoInput>");
-        xml.AppendLine($"  <ProtectedClient>{protectedClient}</ProtectedClient>");
+        xml.AppendLine($"  <ProtectedClient>{(plan.Sandbox.ProtectedClient ? "Enable" : "Disable")}</ProtectedClient>");
         xml.AppendLine($"  <MemoryInMB>{plan.Sandbox.MemoryMb}</MemoryInMB>");
         xml.AppendLine("  <MappedFolders>");
         AppendFolder(xml, workspace.Input, guestInput, true);
@@ -74,45 +63,141 @@ public sealed class SandboxConfigurationGenerator : ISandboxConfigurationGenerat
     private static string BuildBootstrap(SessionPlan plan, string targetGuestPath, string guestOutput)
     {
         string argsJson = JsonSerializer.Serialize(plan.Target.Arguments.Select(x => x.Replace("${targetFileName}", plan.TargetFileName, StringComparison.Ordinal)));
-        string escapedTarget = targetGuestPath.Replace("'", "''", StringComparison.Ordinal);
-        string escapedWorking = plan.Target.WorkingDirectory.Replace("'", "''", StringComparison.Ordinal);
-        string escapedSession = plan.SessionId.Replace("'", "''", StringComparison.Ordinal);
-        string escapedOutput = guestOutput.Replace("'", "''", StringComparison.Ordinal);
+        string collectorsJson = JsonSerializer.Serialize(plan.ArtifactCollectors.Select(x => x.ToLowerInvariant()));
+        string escapedTarget = Ps(targetGuestPath);
+        string escapedWorking = Ps(plan.Target.WorkingDirectory);
+        string escapedSession = Ps(plan.SessionId);
+        string escapedOutput = Ps(guestOutput);
         return $$"""
         $ErrorActionPreference = 'Stop'
         $sessionId = '{{escapedSession}}'
         $outputRoot = '{{escapedOutput}}'
+        $workingDirectory = '{{escapedWorking}}'
         $metaRoot = Join-Path $outputRoot '.sandforge'
-        New-Item -ItemType Directory -Force -Path $outputRoot, $metaRoot | Out-Null
-
-        $arguments = ConvertFrom-Json @'
+        $collectorRoot = Join-Path $metaRoot 'collectors'
+        New-Item -ItemType Directory -Force -Path $outputRoot, $workingDirectory, $metaRoot, $collectorRoot | Out-Null
+        $arguments = @(ConvertFrom-Json @'
         {{argsJson}}
-        '@
+        '@)
+        $collectors = @(ConvertFrom-Json @'
+        {{collectorsJson}}
+        '@)
 
-        $startedAt = [DateTimeOffset]::UtcNow
-        $exitCode = 1
-        try {
-            Push-Location '{{escapedWorking}}'
-            & '{{escapedTarget}}' @arguments
-            $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+        function Test-Collector([string]$name) { return $collectors -contains $name }
+        function Capture-Snapshot([scriptblock]$action) {
+          try { return [pscustomobject]@{ Items=@(& $action); Error=$null } }
+          catch { return [pscustomobject]@{ Items=@(); Error=$_.Exception.Message } }
         }
-        catch {
-            $_ | Out-String | Set-Content -Encoding UTF8 (Join-Path $metaRoot 'bootstrap-error.txt')
-            $exitCode = 1
+        function Save-Collector([string]$name, $items, [object[]]$errors) {
+          $errorText = (@($errors) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }) -join ' | '
+          if ([string]::IsNullOrWhiteSpace($errorText)) { $errorText = $null }
+          $payload = [ordered]@{ collector=$name; items=@($items); error=$errorText }
+          $fileName = if($name -eq 'process-list'){ "$name.json" }else{ "$name-diff.json" }
+          $payload | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 (Join-Path $collectorRoot $fileName)
         }
-        finally {
-            Pop-Location -ErrorAction SilentlyContinue
-            $marker = [ordered]@{
-                schemaVersion = 1
-                sessionId = $sessionId
-                targetExitCode = $exitCode
-                startedAt = $startedAt.ToString('O')
-                endedAt = [DateTimeOffset]::UtcNow.ToString('O')
+        function Get-ProcessesSnapshot {
+          @(Get-CimInstance Win32_Process -ErrorAction Stop | Select-Object ProcessId,ParentProcessId,Name,ExecutablePath,CreationDate)
+        }
+        function Get-InstalledAppsSnapshot {
+          $paths = @('HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*','HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*')
+          @($paths | ForEach-Object { Get-ItemProperty $_ -ErrorAction SilentlyContinue } | Where-Object DisplayName | Select-Object @{n='Id';e={"$($_.PSPath)|$($_.DisplayName)"} },DisplayName,DisplayVersion,Publisher,InstallLocation)
+        }
+        function Get-ServicesSnapshot {
+          @(Get-CimInstance Win32_Service -ErrorAction Stop | Select-Object Name,DisplayName,State,StartMode,PathName)
+        }
+        function Get-TasksSnapshot {
+          if (Get-Command Get-ScheduledTask -ErrorAction SilentlyContinue) { @(Get-ScheduledTask -ErrorAction Stop | Select-Object @{n='Id';e={"$($_.TaskPath)$($_.TaskName)"} },TaskName,TaskPath,State) } else { @() }
+        }
+        function Get-FilesSnapshot {
+          $roots = @($env:ProgramFiles,${env:ProgramFiles(x86)},$env:ProgramData,$env:LOCALAPPDATA) | Where-Object { $_ -and (Test-Path $_) }
+          @($roots | ForEach-Object { Get-ChildItem $_ -File -Recurse -Force -ErrorAction SilentlyContinue } | Select-Object -First 50000 @{n='Path';e={$_.FullName} },Length,LastWriteTimeUtc)
+        }
+        function Get-RegistrySnapshot {
+          $keys = @('HKLM:\Software\Microsoft\Windows\CurrentVersion\Run','HKCU:\Software\Microsoft\Windows\CurrentVersion\Run','HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall','HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall')
+          $result = @()
+          foreach ($key in $keys) {
+            if (-not (Test-Path $key)) { continue }
+            Get-ChildItem $key -Recurse -ErrorAction SilentlyContinue | Select-Object -First 20000 | ForEach-Object {
+              $item = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue
+              if ($null -eq $item) { return }
+              foreach ($property in $item.PSObject.Properties | Where-Object { $_.Name -notmatch '^PS' }) {
+                $result += [pscustomobject]@{ Id="$($_.PSPath)|$($property.Name)"; Path=$_.PSPath; Name=$property.Name; Value=[string]$property.Value }
+              }
             }
-            $marker | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $metaRoot 'completed.json')
-            Start-Sleep -Seconds 1
-            Start-Process shutdown.exe -ArgumentList '/s','/t','1' -WindowStyle Hidden
+          }
+          return @($result)
+        }
+        function Compare-Snapshot($before, $after, [string]$key) {
+          $left=@{}; $right=@{}
+          foreach($item in @($before)){ $id=[string]$item.$key; if(-not [string]::IsNullOrWhiteSpace($id)){ $left[$id]=$item } }
+          foreach($item in @($after)){ $id=[string]$item.$key; if(-not [string]::IsNullOrWhiteSpace($id)){ $right[$id]=$item } }
+          $changes=@()
+          foreach($id in $right.Keys){
+            if(-not $left.ContainsKey($id)){ $changes += [pscustomobject]@{Change='Added';Key=$id;After=$right[$id]} }
+            elseif(($left[$id]|ConvertTo-Json -Compress -Depth 6) -ne ($right[$id]|ConvertTo-Json -Compress -Depth 6)){ $changes += [pscustomobject]@{Change='Modified';Key=$id;Before=$left[$id];After=$right[$id]} }
+          }
+          foreach($id in $left.Keys){ if(-not $right.ContainsKey($id)){ $changes += [pscustomobject]@{Change='Removed';Key=$id;Before=$left[$id]} } }
+          return @($changes)
+        }
+
+        $before=@{}
+        if(Test-Collector 'installed-apps'){ $before.apps = Capture-Snapshot { Get-InstalledAppsSnapshot } }
+        if(Test-Collector 'services'){ $before.services = Capture-Snapshot { Get-ServicesSnapshot } }
+        if(Test-Collector 'scheduled-tasks'){ $before.tasks = Capture-Snapshot { Get-TasksSnapshot } }
+        if(Test-Collector 'file-changes'){ $before.files = Capture-Snapshot { Get-FilesSnapshot } }
+        if(Test-Collector 'registry-changes'){ $before.registry = Capture-Snapshot { Get-RegistrySnapshot } }
+
+        $startedAt=[DateTimeOffset]::UtcNow
+        $exitCode=1
+        $locationPushed=$false
+        try {
+          Push-Location $workingDirectory
+          $locationPushed=$true
+          & '{{escapedTarget}}' @arguments
+          $exitCode=if($null -eq $LASTEXITCODE){0}else{[int]$LASTEXITCODE}
+        } catch {
+          $_ | Out-String | Set-Content -Encoding UTF8 (Join-Path $metaRoot 'bootstrap-error.txt')
+          $exitCode=1
+        } finally {
+          if($locationPushed){ Pop-Location -ErrorAction SilentlyContinue }
+
+          if(Test-Collector 'process-list'){
+            $after = Capture-Snapshot { Get-ProcessesSnapshot }
+            Save-Collector 'process-list' $after.Items @($after.Error)
+          }
+          if(Test-Collector 'installed-apps'){
+            $after = Capture-Snapshot { Get-InstalledAppsSnapshot }
+            $items = if($before.apps.Error -or $after.Error){ @() }else{ Compare-Snapshot $before.apps.Items $after.Items 'Id' }
+            Save-Collector 'installed-apps' $items @($before.apps.Error,$after.Error)
+          }
+          if(Test-Collector 'services'){
+            $after = Capture-Snapshot { Get-ServicesSnapshot }
+            $items = if($before.services.Error -or $after.Error){ @() }else{ Compare-Snapshot $before.services.Items $after.Items 'Name' }
+            Save-Collector 'services' $items @($before.services.Error,$after.Error)
+          }
+          if(Test-Collector 'scheduled-tasks'){
+            $after = Capture-Snapshot { Get-TasksSnapshot }
+            $items = if($before.tasks.Error -or $after.Error){ @() }else{ Compare-Snapshot $before.tasks.Items $after.Items 'Id' }
+            Save-Collector 'scheduled-tasks' $items @($before.tasks.Error,$after.Error)
+          }
+          if(Test-Collector 'file-changes'){
+            $after = Capture-Snapshot { Get-FilesSnapshot }
+            $items = if($before.files.Error -or $after.Error){ @() }else{ Compare-Snapshot $before.files.Items $after.Items 'Path' }
+            Save-Collector 'file-changes' $items @($before.files.Error,$after.Error)
+          }
+          if(Test-Collector 'registry-changes'){
+            $after = Capture-Snapshot { Get-RegistrySnapshot }
+            $items = if($before.registry.Error -or $after.Error){ @() }else{ Compare-Snapshot $before.registry.Items $after.Items 'Id' }
+            Save-Collector 'registry-changes' $items @($before.registry.Error,$after.Error)
+          }
+
+          $marker=[ordered]@{schemaVersion=1;sessionId=$sessionId;targetExitCode=$exitCode;startedAt=$startedAt.ToString('O');endedAt=[DateTimeOffset]::UtcNow.ToString('O')}
+          $marker | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $metaRoot 'completed.json')
+          Start-Sleep -Seconds 1
+          Start-Process shutdown.exe -ArgumentList '/s','/t','1' -WindowStyle Hidden
         }
         """;
     }
+
+    private static string Ps(string value) => value.Replace("'", "''", StringComparison.Ordinal);
 }

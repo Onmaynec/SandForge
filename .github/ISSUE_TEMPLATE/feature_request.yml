@@ -1,0 +1,24 @@
+name: ✨ Предложение
+about: Предложить улучшение SandForge
+title: "[Идея]: "
+labels: []
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую проблему решает предложение?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Предлагаемое решение
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Влияние на безопасность
+      description: Укажите новые mounts, network, secrets или host-доступ.
+    validations:
+      required: true
