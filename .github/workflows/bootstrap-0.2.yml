@@ -23,12 +23,11 @@ jobs:
       - name: Reconstruct source tree
         shell: pwsh
         run: |
-          $paths = @(
-            '.bootstrap/part-00',
+          $paths = (0..8 | ForEach-Object { '.bootstrap/part-00-{0:D2}' -f $_ }) + @(
             '.bootstrap/part-01',
             '.bootstrap/part-02'
           ) + (0..15 | ForEach-Object { '.bootstrap/part-03-{0:D2}' -f $_ })
-          $expected = @(18000, 18000, 18000) + (0..14 | ForEach-Object { 2000 }) + @(1832)
+          $expected = (0..8 | ForEach-Object { 2000 }) + @(18000, 18000) + (0..14 | ForEach-Object { 2000 }) + @(1832)
           if ($paths.Count -ne $expected.Count) {
             throw "Bootstrap manifest mismatch"
           }
