@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="SandForge" width="720">
+
 </p>
 
 <p align="center">
