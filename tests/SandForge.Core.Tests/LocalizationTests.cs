@@ -1,5 +1,6 @@
 using SandForge.Domain;
 using SandForge.Reporting;
+using Xunit;
 
 namespace SandForge.Core.Tests;
 
