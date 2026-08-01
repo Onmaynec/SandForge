@@ -1,0 +1,88 @@
+name: Bootstrap SandForge 0.3
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.bootstrap/**'
+      - '.github/workflows/bootstrap-0.3.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout publication branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/sandforge-0.3.0-alpha
+
+      - name: Reconstruct source tree
+        shell: pwsh
+        run: |
+          $paths = 0..15 | ForEach-Object { '.bootstrap/chunk-{0:D2}' -f $_ }
+          $expected = @(3000, 3000, 3000, 3000, 3000) + (0..9 | ForEach-Object { 6000 }) + @(5300)
+          if ($paths.Count -ne $expected.Count) {
+            throw 'Bootstrap manifest mismatch.'
+          }
+
+          $chunks = @()
+          for ($i = 0; $i -lt $paths.Count; $i++) {
+            if (-not (Test-Path $paths[$i])) {
+              throw "Missing bootstrap segment: $($paths[$i])"
+            }
+
+            $chunk = (Get-Content $paths[$i] -Raw) -replace '[^A-Za-z0-9+/=]', ''
+            Write-Host "$($paths[$i]): $($chunk.Length), expected $($expected[$i])"
+            if ($chunk.Length -ne $expected[$i]) {
+              throw "Invalid segment length: $($paths[$i])"
+            }
+
+            $chunks += $chunk
+          }
+
+          $base64 = $chunks -join ''
+          if ($base64.Length -ne 80300) {
+            throw "Unexpected Base64 length: $($base64.Length)"
+          }
+
+          [IO.File]::WriteAllBytes('overlay.zip', [Convert]::FromBase64String($base64))
+          $hash = (Get-FileHash overlay.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne 'e7deda7bc4cbbff7ad799c884e57698d2919804b3cbfd3ffdad1e8e5430ec402') {
+            throw "SHA-256 mismatch: $hash"
+          }
+
+          Expand-Archive overlay.zip -DestinationPath overlay -Force
+          Get-ChildItem overlay -Force | ForEach-Object {
+            Copy-Item $_.FullName . -Recurse -Force
+          }
+
+          Remove-Item overlay.zip -Force
+          Remove-Item overlay, .bootstrap -Recurse -Force
+          Remove-Item .github/workflows/bootstrap-0.3.yml -Force
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore SandForge.sln
+
+      - name: Build
+        run: dotnet build SandForge.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test SandForge.sln --configuration Release --no-build
+
+      - name: Commit validated project
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Publish SandForge 0.3.0-alpha"
+          git push origin HEAD:agent/sandforge-0.3.0-alpha
