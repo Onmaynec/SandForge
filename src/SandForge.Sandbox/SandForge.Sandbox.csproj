@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\SandForge.Domain\SandForge.Domain.csproj" />
+    <ProjectReference Include="..\SandForge.Core\SandForge.Core.csproj" />
+  </ItemGroup>
+</Project>

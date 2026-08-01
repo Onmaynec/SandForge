@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "storage": {
+    "retentionDays": 30,
+    "maximumWorkspaceSizeMb": 8192,
+    "maximumArtifactSizeMb": 256
+  },
+  "session": {
+    "defaultTemplate": "isolated-analysis",
+    "defaultTimeout": "15m",
+    "maximumConcurrentSessions": 1,
+    "keepFailedWorkspaces": true
+  },
+  "security": {
+    "defaultNetwork": "Disabled",
+    "defaultClipboard": "Disabled",
+    "allowWritableUserProfileMount": false,
+    "allowSystemDriveMount": false,
+    "allowNoTimeout": false
+  },
+  "privacy": {
+    "storeMachineName": false,
+    "storeUserName": false,
+    "redactHostPaths": true
+  },
+  "ui": {
+    "language": "auto",
+    "theme": "dark",
+    "animations": false
+  }
+}

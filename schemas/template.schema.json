@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sandforge.dev/schemas/template.schema.json",
+  "title": "SandForge template",
+  "type": "object",
+  "required": ["schemaVersion", "metadata", "sandbox", "session", "target"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,63}$" },
+        "displayName": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "sandbox": {
+      "type": "object",
+      "properties": {
+        "network": { "enum": ["disabled", "enabled", "required"] },
+        "clipboard": { "enum": ["disabled", "enabled"] },
+        "protectedClient": { "type": "boolean" },
+        "memoryMb": { "type": "integer", "minimum": 1024 }
+      },
+      "additionalProperties": false
+    },
+    "session": {
+      "type": "object",
+      "properties": {
+        "timeout": { "type": "string" },
+        "keepWorkspace": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "mounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "destination", "mode"],
+        "properties": {
+          "source": { "type": "string" },
+          "destination": { "type": "string" },
+          "mode": { "enum": ["readOnly", "readWrite", "copyIn", "copyOut"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "target": {
+      "type": "object",
+      "required": ["executable"],
+      "properties": {
+        "executable": { "type": "string" },
+        "workingDirectory": { "type": "string" },
+        "arguments": { "type": "array", "items": { "type": "string" } },
+        "wait": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

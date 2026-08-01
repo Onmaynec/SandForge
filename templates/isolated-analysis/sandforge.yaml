@@ -1,0 +1,20 @@
+schemaVersion: 1
+metadata:
+  name: isolated-analysis
+  displayName: Isolated Analysis
+  description: Restricted sandbox for unknown applications
+sandbox:
+  network: disabled
+  clipboard: disabled
+  protectedClient: true
+  memoryMb: 4096
+session:
+  timeout: 15m
+  keepWorkspace: false
+target:
+  executable: "C:\\Sandbox\\Input\\${targetFileName}"
+  workingDirectory: "C:\\Sandbox\\Input"
+  arguments:
+artifacts:
+  collectors:
+    - user-output

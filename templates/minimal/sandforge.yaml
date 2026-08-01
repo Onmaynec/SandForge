@@ -1,0 +1,19 @@
+schemaVersion: 1
+metadata:
+  name: minimal
+  displayName: Minimal
+  description: Minimal offline Windows Sandbox launch
+sandbox:
+  network: disabled
+  clipboard: disabled
+  protectedClient: true
+  memoryMb: 2048
+session:
+  timeout: 10m
+  keepWorkspace: false
+target:
+  executable: "C:\\Sandbox\\Input\\${targetFileName}"
+  workingDirectory: "C:\\Sandbox\\Input"
+artifacts:
+  collectors:
+    - user-output
