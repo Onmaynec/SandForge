@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Globalization;
 using System.Resources;
 using SandForge.Domain;
@@ -59,6 +60,20 @@ public sealed class UiText
     public string Cleanup(CleanupState value) => Get($"Cleanup_{value}");
     public string Network(NetworkPolicy value) => Get($"Network_{value}");
     public string Clipboard(ClipboardPolicy value) => Get($"Clipboard_{value}");
+
+    public static IReadOnlyList<string> MissingKeys(string language)
+    {
+        CultureInfo culture = language.Equals("en", StringComparison.OrdinalIgnoreCase)
+            ? EnglishCulture
+            : CultureInfo.InvariantCulture;
+        ResourceSet? resourceSet = ResourceManager.GetResourceSet(culture, true, false);
+        if (resourceSet is null) return RequiredKeys;
+
+        var available = new HashSet<string>(StringComparer.Ordinal);
+        foreach (DictionaryEntry entry in resourceSet)
+            if (entry.Key is string key) available.Add(key);
+        return RequiredKeys.Where(key => !available.Contains(key)).ToArray();
+    }
 
     public static IReadOnlyList<string> RequiredKeys { get; } =
     [
