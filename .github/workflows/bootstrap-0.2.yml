@@ -37,7 +37,6 @@ jobs:
               throw "Missing bootstrap segment: $($paths[$i])"
             }
             $chunk = (Get-Content $paths[$i] -Raw) -replace '[^A-Za-z0-9+/=]', ''
-            Write-Host "$($paths[$i]): $($chunk.Length), expected $($expected[$i])"
             if ($chunk.Length -ne $expected[$i]) {
               throw "Invalid length for $($paths[$i]): $($chunk.Length)"
             }
@@ -58,6 +57,15 @@ jobs:
             Where-Object { $_.Name.StartsWith('.') -and $_.Name -ne '.git' } |
             ForEach-Object { Copy-Item $_.FullName . -Recurse -Force }
           git checkout HEAD -- .github/workflows/build.yml .github/workflows/test.yml .github/workflows/release.yml
+
+          # C# raw interpolated strings treat adjacent PowerShell closing braces as interpolation delimiters.
+          $generatorPath = 'src/SandForge.Sandbox/SandboxConfigurationGenerator.cs'
+          $generator = Get-Content $generatorPath -Raw
+          $generator = $generator.Replace('"}},DisplayName', '"} },DisplayName')
+          $generator = $generator.Replace('"}},TaskName', '"} },TaskName')
+          $generator = $generator.Replace('}},Length', '} },Length')
+          [IO.File]::WriteAllText($generatorPath, $generator, [Text.UTF8Encoding]::new($false))
+
           Remove-Item source.zip -Force
           Remove-Item extracted, .bootstrap -Recurse -Force
 
