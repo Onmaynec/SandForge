@@ -1,0 +1,27 @@
+schemaVersion: 1
+metadata:
+  name: powershell-clean
+  displayName: Clean PowerShell
+  description: Runs a copied PowerShell script in an offline disposable environment
+sandbox:
+  network: disabled
+  clipboard: disabled
+  protectedClient: true
+  memoryMb: 4096
+session:
+  timeout: 15m
+  keepWorkspace: false
+target:
+  executable: "powershell.exe"
+  workingDirectory: "C:\\Sandbox\\Input"
+  arguments:
+    - "-NoLogo"
+    - "-NoProfile"
+    - "-NonInteractive"
+    - "-ExecutionPolicy"
+    - "Bypass"
+    - "-File"
+    - "C:\\Sandbox\\Input\\${targetFileName}"
+artifacts:
+  collectors:
+    - user-output

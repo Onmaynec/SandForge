@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" role="img" aria-labelledby="title desc">
+  <title id="title">SandForge</title><desc id="desc">An anvil inside a sandbox frame</desc>
+  <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#42d7e8"/><stop offset="1" stop-color="#ff9f43"/></linearGradient></defs>
+  <rect width="720" height="220" rx="28" fill="#08121b"/>
+  <rect x="24" y="24" width="172" height="172" rx="24" fill="#102330" stroke="#244556" stroke-width="4"/>
+  <path d="M60 74h102l-22 28h-22v22h28v22h-28l-14 28H82l14-28H70v-22h26v-22H78z" fill="url(#g)"/>
+  <text x="230" y="112" fill="#e7f6ff" font-family="Segoe UI,Arial,sans-serif" font-size="62" font-weight="700">SandForge</text>
+  <text x="234" y="155" fill="#8eb6c7" font-family="Segoe UI,Arial,sans-serif" font-size="24">Forge disposable Windows environments.</text>
+</svg>

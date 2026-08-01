@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>sandforge</AssemblyName>
+    <RootNamespace>SandForge.Cli</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SandForge.Domain\SandForge.Domain.csproj" />
+    <ProjectReference Include="..\SandForge.Core\SandForge.Core.csproj" />
+    <ProjectReference Include="..\SandForge.Sandbox\SandForge.Sandbox.csproj" />
+    <ProjectReference Include="..\SandForge.Reporting\SandForge.Reporting.csproj" />
+  </ItemGroup>
+</Project>

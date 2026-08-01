@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+.vs/
+.idea/
+artifacts/
+data/
+sessions/
+reports/
+logs/
+*.user
+*.suo
