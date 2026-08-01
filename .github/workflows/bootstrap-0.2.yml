@@ -30,6 +30,10 @@ jobs:
         run: |
           $parts = Get-ChildItem .bootstrap/part-* | Sort-Object Name
           $base64 = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ''
+          $base64 = $base64 -replace '[^A-Za-z0-9+/=]', ''
+          if ($base64.Length -ne 85832) {
+            throw "Unexpected Base64 length: $($base64.Length)"
+          }
           [IO.File]::WriteAllBytes('source.zip', [Convert]::FromBase64String($base64))
           $hash = (Get-FileHash source.zip -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($hash -ne '29b7f8d867afed0bc60ae03def7cd76cf458d6808dc811910a3a5b5dbc5ddba4') {
