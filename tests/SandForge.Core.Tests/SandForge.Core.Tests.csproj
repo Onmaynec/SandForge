@@ -12,5 +12,6 @@
     </PackageReference>
     <ProjectReference Include="..\..\src\SandForge.Core\SandForge.Core.csproj" />
     <ProjectReference Include="..\..\src\SandForge.Domain\SandForge.Domain.csproj" />
+    <ProjectReference Include="..\..\src\SandForge.Reporting\SandForge.Reporting.csproj" />
   </ItemGroup>
 </Project>
