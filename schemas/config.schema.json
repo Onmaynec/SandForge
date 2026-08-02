@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sandforge.dev/schemas/config/v2.json",
+  "title": "SandForge configuration v2",
+  "x-sandforge-contract": {
+    "id": "config",
+    "currentVersion": 2,
+    "supportedVersions": [2]
+  },
+  "type": "object",
+  "required": ["schemaVersion", "storage", "session", "security", "cache", "updates", "privacy", "ui"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "storage": {
+      "type": "object",
+      "required": ["retentionDays", "maximumWorkspaceSizeMb", "maximumArtifactSizeMb"],
+      "properties": {
+        "retentionDays": { "type": "integer", "minimum": 1, "maximum": 3650 },
+        "maximumWorkspaceSizeMb": { "type": "integer", "minimum": 256, "maximum": 1048576 },
+        "maximumArtifactSizeMb": { "type": "integer", "minimum": 1, "maximum": 65536 }
+      },
+      "additionalProperties": false
+    },
+    "session": {
+      "type": "object",
+      "required": ["defaultTemplate", "defaultTimeout", "maximumConcurrentSessions", "keepFailedWorkspaces"],
+      "properties": {
+        "defaultTemplate": { "type": "string", "minLength": 1 },
+        "defaultTimeout": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?[smh]$" },
+        "maximumConcurrentSessions": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "keepFailedWorkspaces": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "security": {
+      "type": "object",
+      "required": ["defaultNetwork", "defaultClipboard", "allowWritableUserProfileMount", "allowSystemDriveMount", "allowNoTimeout"],
+      "properties": {
+        "defaultNetwork": { "enum": ["Disabled", "Enabled", "Required"] },
+        "defaultClipboard": { "enum": ["Disabled", "Enabled"] },
+        "allowWritableUserProfileMount": { "type": "boolean" },
+        "allowSystemDriveMount": { "type": "boolean" },
+        "allowNoTimeout": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "cache": {
+      "type": "object",
+      "required": ["root", "allowedTypes", "defaultMaximumSizeMb"],
+      "properties": {
+        "root": { "type": "string", "minLength": 1 },
+        "allowedTypes": {
+          "type": "array",
+          "items": { "enum": ["nuget", "npm", "pip", "winget"] },
+          "uniqueItems": true
+        },
+        "defaultMaximumSizeMb": { "type": "integer", "minimum": 64, "maximum": 32768 }
+      },
+      "additionalProperties": false
+    },
+    "updates": {
+      "type": "object",
+      "required": ["repository", "channel", "autoCheck", "autoApply", "intervalHours"],
+      "properties": {
+        "repository": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+        "channel": { "enum": ["stable", "preview"] },
+        "autoCheck": { "type": "boolean" },
+        "autoApply": { "type": "boolean" },
+        "intervalHours": { "type": "integer", "minimum": 1, "maximum": 720 }
+      },
+      "additionalProperties": false
+    },
+    "privacy": {
+      "type": "object",
+      "required": ["storeMachineName", "storeUserName", "redactHostPaths"],
+      "properties": {
+        "storeMachineName": { "type": "boolean" },
+        "storeUserName": { "type": "boolean" },
+        "redactHostPaths": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "ui": {
+      "type": "object",
+      "required": ["language", "theme", "animations"],
+      "properties": {
+        "language": { "enum": ["ru", "en", "auto"] },
+        "theme": { "enum": ["dark", "light", "auto"] },
+        "animations": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
