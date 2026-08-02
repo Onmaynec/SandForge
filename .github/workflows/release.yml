@@ -23,11 +23,34 @@ jobs:
           $version = '${{ github.ref_name }}'.TrimStart('v')
           ./scripts/package.ps1 -Version $version
 
+      - name: Prepare Russian release notes
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'
+          if ($tag -eq 'v0.5.0') {
+            @'
+            ## SandForge 0.5.0
+
+            ### Основные изменения
+            - проверка совместимости через `sandforge schema`;
+            - JSON Schema для основных форматов SandForge;
+            - versioned JSON-отчёты;
+            - package manifest с относительными путями, размером и SHA-256;
+            - RU/EN интерфейс и contract tests;
+            - блокировка неизвестных и неподдерживаемых версий схем.
+
+            ### Проверка архива
+            Сравните SHA-256 скачанного ZIP с приложенным файлом `.sha256`.
+            '@ | Set-Content -LiteralPath release-notes.md -Encoding utf8
+          } else {
+            "## SandForge $tag`n`nАвтоматически собранный релиз SandForge.`n" | Set-Content -LiteralPath release-notes.md -Encoding utf8
+          }
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: SandForge ${{ github.ref_name }}
-          generate_release_notes: true
+          body_path: release-notes.md
           prerelease: ${{ contains(github.ref_name, '-') }}
           make_latest: ${{ contains(github.ref_name, '-') == false }}
           files: |
