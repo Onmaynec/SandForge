@@ -3,10 +3,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  pull_request_target:
-    types: [opened, synchronize, reopened]
-  issue_comment:
-    types: [created]
 permissions:
   contents: read
 jobs:
@@ -20,24 +16,3 @@ jobs:
       - run: dotnet test SandForge.sln -c Release
       - name: CLI smoke test
         run: dotnet run --project src/SandForge.Cli -- --help
-
-  publish-v0-5-0:
-    if: ${{ github.event_name == 'issue_comment' && github.event.issue.number == 25 && github.event.issue.pull_request && github.event.comment.body == '/publish-v0.5.0' }}
-    needs: test
-    permissions:
-      contents: write
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-          persist-credentials: true
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-      - name: Publish SandForge v0.5.0
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: ./scripts/publish-v0.5.0.ps1
