@@ -76,7 +76,7 @@ GitHub Release `v0.5.0` содержит:
 - `SandForge-0.5.0-win-x64.zip`;
 - `SandForge-0.5.0-win-x64.zip.sha256`.
 
-Checksum и package manifest позволяют проверить целостность, но подтверждают происхождение только при получении через доверенный канал. Криптографическая подпись, fingerprint издателя и trust-chain validation вынесены в задачу [#15](../../issues/15).
+Checksum и package manifest позволяют проверить целостность, но подтверждают происхождение только при получении через доверенный канал. Криптографическая подпись, fingerprint издателя и trust-chain validation вынесены в задачу [#15](https://github.com/Onmaynec/SandForge/issues/15).
 
 ## Что остаётся до 1.0.0
 
@@ -88,4 +88,4 @@ Checksum и package manifest позволяют проверить целост�
 - правила удаления устаревшей схемы;
 - подписанные release/package metadata.
 
-Текущий прогресс отслеживается в [issue #14](../../issues/14), а общий порядок работ — в [ROADMAP.md](ROADMAP.md).
+Текущий прогресс отслеживается в [issue #14](https://github.com/Onmaynec/SandForge/issues/14), а общий порядок работ — в [ROADMAP.md](ROADMAP.md).
