@@ -1,10 +1,10 @@
-# Compatibility policy
+# Compatibility policy SandForge 0.5.0
 
-SandForge 0.5 introduces explicit versions for every file format that crosses a process, package or release boundary.
+SandForge `0.5.0` вводит явные версии для всех форматов, которые пересекают границу процесса, sandbox-сессии, portable package или релиза.
 
-## Registered contracts
+## Зарегистрированные контракты
 
-| Contract | Current | Supported | Deprecated | Schema |
+| Контракт | Текущая версия | Поддерживаемые | Устаревшие | JSON Schema |
 |---|---:|---|---|---|
 | `template` | 2 | 1, 2 | 1 | `schemas/template.schema.json` |
 | `config` | 2 | 2 | — | `schemas/config.schema.json` |
@@ -12,39 +12,80 @@ SandForge 0.5 introduces explicit versions for every file format that crosses a 
 | `completion-marker` | 1 | 1 | — | `schemas/completion-marker.schema.json` |
 | `package-manifest` | 1 | 1 | — | `schemas/package-manifest.schema.json` |
 
-The machine-readable registry is stored in `schemas/catalog.json`.
+Машинно-читаемый реестр хранится в `schemas/catalog.json`.
 
 ## CLI
 
 ```text
 sandforge schema list
 sandforge schema describe template
-sandforge schema validate templates/base/sandforge.yaml
+sandforge schema validate templates/minimal/sandforge.yaml
 sandforge schema validate report.json --contract report
 ```
 
-Validation returns exit code `0` for a compatible document, `2` for invalid command usage and `4` for an invalid, unknown or unsupported contract.
+Результат проверки:
 
-## Version rules
+- exit code `0` — документ совместим;
+- exit code `2` — неверное использование команды;
+- exit code `4` — документ невалиден, контракт неизвестен или версия не поддерживается.
 
-- `schemaVersion` is required for all current JSON contracts.
-- A supported deprecated version can be read, but produces a warning.
-- An unsupported version is rejected before execution or import.
-- Adding optional fields is backward compatible.
-- Removing or renaming a field, changing its meaning or changing an enum value requires a new schema version.
-- Domain/error codes are language-neutral and are not translated.
-- JSON property names and enum values are stable lower camel case.
+## Правила версионирования
 
-## Report migration
+- `schemaVersion` обязателен для всех текущих JSON-контрактов.
+- Поддерживаемая устаревшая версия может быть прочитана, но должна выдавать предупреждение.
+- Неизвестная или неподдерживаемая версия отклоняется до выполнения, запуска или импорта.
+- Добавление необязательного поля считается backward-compatible изменением.
+- Удаление или переименование поля, изменение его смысла либо enum value требует новой версии схемы.
+- Domain/error codes не зависят от языка и не переводятся.
+- Имена JSON-свойств и enum values публичных контрактов фиксируются в lower camel case.
+- После `1.0.0` breaking change публичного контракта потребует major release.
 
-Reports generated before 0.5 did not contain `schemaVersion`, `generatedAt` or `generatorVersion`. They are detected as report schema `0`, remain readable during the alpha period and produce a deprecation warning. New reports use schema `1`.
+## Совместимость шаблонов
+
+Template schema `2` является текущей. Schema `1` остаётся доступной как deprecated-формат и выдаёт предупреждение. Перед запуском шаблон проходит проверку структуры, разрешение безопасных `extends/includes` и security validation.
+
+## Миграция отчётов
+
+Отчёты, созданные до `0.5.0`, не содержат `schemaVersion`, `generatedAt` и `generatorVersion`. Они определяются как report schema `0`, остаются читаемыми в период до `1.0.0` и выдают предупреждение об устаревании.
+
+Новые отчёты используют schema `1` и содержат:
+
+- `schemaVersion`;
+- `language`;
+- `generatedAt`;
+- `generatorVersion`;
+- `session`.
 
 ## Portable package manifest
 
-`package.ps1` creates `manifest.json` before the ZIP archive is produced. The manifest records the product version, runtime identifier, creation time and SHA-256 of every packaged file. Paths must be relative and may not contain `..` segments.
+`scripts/package.ps1` создаёт `manifest.json` до упаковки ZIP. Manifest содержит:
 
-The manifest proves package integrity only when it is obtained through a trusted channel. Cryptographic signing and trust-chain validation remain a separate 1.0 milestone.
+- версию продукта;
+- runtime identifier;
+- время создания;
+- относительный путь каждого payload-файла;
+- размер файла;
+- SHA-256.
 
-## Toward 1.0
+Пути должны быть относительными и не могут содержать сегменты `..`. Manifest не включает собственный hash.
 
-The contracts introduced in 0.5 are still alpha contracts. Before 1.0 the project will add migration fixtures, long-term compatibility windows and signed release metadata. After 1.0, breaking contract changes require a major release.
+## Целостность релиза
+
+GitHub Release `v0.5.0` содержит:
+
+- `SandForge-0.5.0-win-x64.zip`;
+- `SandForge-0.5.0-win-x64.zip.sha256`.
+
+Checksum и package manifest позволяют проверить целостность, но подтверждают происхождение только при получении через доверенный канал. Криптографическая подпись, fingerprint издателя и trust-chain validation вынесены в задачу [#15](../../issues/15).
+
+## Что остаётся до 1.0.0
+
+Контракты `0.5.0` опубликованы и используются в runtime, но долгосрочная policy ещё должна быть завершена:
+
+- миграции между будущими версиями схем;
+- расширенный набор legacy fixtures в CI;
+- формальное окно поддержки deprecated-версий;
+- правила удаления устаревшей схемы;
+- подписанные release/package metadata.
+
+Текущий прогресс отслеживается в [issue #14](../../issues/14), а общий порядок работ — в [ROADMAP.md](ROADMAP.md).
