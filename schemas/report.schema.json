@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sandforge.dev/schemas/report/v1.json",
+  "title": "SandForge session report v1",
+  "x-sandforge-contract": {
+    "id": "report",
+    "currentVersion": 1,
+    "supportedVersions": [0, 1],
+    "deprecatedVersions": [0]
+  },
+  "type": "object",
+  "required": ["schemaVersion", "language", "generatedAt", "generatorVersion", "session"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "language": { "enum": ["ru", "en"] },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "generatorVersion": { "type": "string", "minLength": 1 },
+    "session": { "$ref": "#/$defs/session" }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": ["id", "type", "relativePath", "size", "sha256", "createdAt"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "relativePath": { "type": "string" },
+        "size": { "type": "integer", "minimum": 0 },
+        "sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "collector": {
+      "type": "object",
+      "required": ["id", "relativePath", "itemCount", "error"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "relativePath": { "type": "string" },
+        "itemCount": { "type": "integer", "minimum": 0 },
+        "error": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "session": {
+      "type": "object",
+      "required": [
+        "id", "templateId", "createdAt", "startedAt", "endedAt", "status", "workspacePath",
+        "configurationPath", "targetFileHash", "risk", "sandboxProcessId", "artifacts", "collectors",
+        "cleanup", "error"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "templateId": { "type": "string", "minLength": 1 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "startedAt": { "type": ["string", "null"], "format": "date-time" },
+        "endedAt": { "type": ["string", "null"], "format": "date-time" },
+        "status": {
+          "enum": [
+            "created", "validating", "preparing", "ready", "starting", "running", "stopping",
+            "collecting", "completed", "partial", "failed", "cancelled", "timedOut", "orphaned"
+          ]
+        },
+        "workspacePath": { "type": "string" },
+        "configurationPath": { "type": "string" },
+        "targetFileHash": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" },
+        "risk": { "enum": ["low", "medium", "high", "critical"] },
+        "sandboxProcessId": { "type": ["integer", "null"] },
+        "artifacts": { "type": "array", "items": { "$ref": "#/$defs/artifact" } },
+        "collectors": { "type": "array", "items": { "$ref": "#/$defs/collector" } },
+        "cleanup": { "enum": ["pending", "kept", "cleaned"] },
+        "error": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
