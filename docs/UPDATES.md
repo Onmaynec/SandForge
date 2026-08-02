@@ -1,6 +1,6 @@
 # 🔄 Обновления SandForge через GitHub
 
-SandForge `0.5.0` использует GitHub Releases как канал доставки опубликованных win-x64 сборок. Текущий стабильный релиз: [v0.5.0](../../releases/tag/v0.5.0).
+SandForge `0.5.0` использует GitHub Releases как канал доставки опубликованных win-x64 сборок. Текущий стабильный релиз: [v0.5.0](https://github.com/Onmaynec/SandForge/releases/tag/v0.5.0).
 
 ## Команды
 
@@ -42,7 +42,7 @@ sandforge update channel preview
 11. При ошибке выполняется rollback из backup.
 
 > [!IMPORTANT]
-> SHA-256 и manifest подтверждают целостность только при получении через доверенный канал. Криптографическая подпись и trust-chain validation запланированы для `0.6.0` в [issue #15](../../issues/15).
+> SHA-256 и manifest подтверждают целостность только при получении через доверенный канал. Криптографическая подпись и trust-chain validation запланированы для `0.6.0` в [issue #15](https://github.com/Onmaynec/SandForge/issues/15).
 
 ## Пользовательские данные
 
