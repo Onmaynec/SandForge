@@ -1,3 +1,4 @@
+# Одноразовый merge-триггер публикации v0.5.0
 name: Publish SandForge 0.5.0 final
 
 on:
