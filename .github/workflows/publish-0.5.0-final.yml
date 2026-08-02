@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: publish-sandforge-v0.5.0-final
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: windows-latest
@@ -83,7 +87,7 @@ jobs:
             artifacts/SandForge-0.5.0-win-x64.zip
             artifacts/SandForge-0.5.0-win-x64.zip.sha256
 
-      - name: Verify published assets
+      - name: Verify and record published assets
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -95,4 +99,22 @@ jobs:
           }
           if ($names -notcontains 'SandForge-0.5.0-win-x64.zip') { throw 'ZIP asset is missing.' }
           if ($names -notcontains 'SandForge-0.5.0-win-x64.zip.sha256') { throw 'SHA-256 asset is missing.' }
+
+          New-Item -ItemType Directory -Force -Path release-status | Out-Null
+          [ordered]@{
+            version = '0.5.0'
+            tag = $release.tagName
+            url = $release.url
+            draft = $release.isDraft
+            prerelease = $release.isPrerelease
+            assets = $names
+            verifiedAt = [DateTimeOffset]::UtcNow.ToString('O')
+          } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath release-status/v0.5.0.json -Encoding utf8
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add release-status/v0.5.0.json
+          git commit -m 'Подтвердить публикацию SandForge v0.5.0'
+          git push origin HEAD:main
+          if ($LASTEXITCODE -ne 0) { throw 'Release status push failed.' }
           Write-Host $release.url
