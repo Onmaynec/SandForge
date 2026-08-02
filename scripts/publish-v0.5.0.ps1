@@ -56,14 +56,34 @@ Write-Host 'Running stable release tests...'
 dotnet test SandForge.sln -c Release
 if ($LASTEXITCODE -ne 0) { throw 'Release tests failed.' }
 
-git fetch --tags origin
-$RemoteTag = git ls-remote --tags origin 'refs/tags/v0.5.0'
-if ([string]::IsNullOrWhiteSpace(($RemoteTag | Out-String))) {
+$ReleaseComplete = $false
+try {
+    $ExistingJson = gh release view v0.5.0 --repo Onmaynec/SandForge --json tagName,isDraft,isPrerelease,assets 2>$null
+    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($ExistingJson)) {
+        $ExistingRelease = $ExistingJson | ConvertFrom-Json
+        $ExistingNames = @($ExistingRelease.assets | ForEach-Object name)
+        $ReleaseComplete =
+            $ExistingRelease.tagName -eq 'v0.5.0' -and
+            -not $ExistingRelease.isDraft -and
+            -not $ExistingRelease.isPrerelease -and
+            $ExistingNames -contains 'SandForge-0.5.0-win-x64.zip' -and
+            $ExistingNames -contains 'SandForge-0.5.0-win-x64.zip.sha256'
+    }
+} catch {
+    $ReleaseComplete = $false
+}
+
+if (-not $ReleaseComplete) {
+    git fetch --tags origin
+    $RemoteTag = git ls-remote --tags origin 'refs/tags/v0.5.0'
+    if (-not [string]::IsNullOrWhiteSpace(($RemoteTag | Out-String))) {
+        git push origin ':refs/tags/v0.5.0'
+        if ($LASTEXITCODE -ne 0) { throw 'Old tag deletion failed.' }
+    }
+    git tag -d v0.5.0 2>$null
     git tag -a v0.5.0 $ReleaseSha -m 'SandForge v0.5.0'
     git push origin refs/tags/v0.5.0
     if ($LASTEXITCODE -ne 0) { throw 'Tag push failed.' }
-} else {
-    Write-Host 'Tag v0.5.0 already exists.'
 }
 
 Write-Host 'Waiting for the tag workflow to publish the release...'
@@ -76,7 +96,11 @@ do {
         if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($Json)) {
             $Candidate = $Json | ConvertFrom-Json
             $Names = @($Candidate.assets | ForEach-Object name)
-            if ($Names -contains 'SandForge-0.5.0-win-x64.zip' -and $Names -contains 'SandForge-0.5.0-win-x64.zip.sha256') {
+            if ($Candidate.tagName -eq 'v0.5.0' -and
+                -not $Candidate.isDraft -and
+                -not $Candidate.isPrerelease -and
+                $Names -contains 'SandForge-0.5.0-win-x64.zip' -and
+                $Names -contains 'SandForge-0.5.0-win-x64.zip.sha256') {
                 $Release = $Candidate
                 break
             }
@@ -87,8 +111,4 @@ do {
 } while ((Get-Date) -lt $Deadline)
 
 if ($null -eq $Release) { throw 'Published release or required assets were not found.' }
-if ($Release.tagName -ne 'v0.5.0' -or $Release.isDraft -or $Release.isPrerelease) {
-    throw 'Release status verification failed.'
-}
-
 Write-Host "Published: $($Release.url)"
