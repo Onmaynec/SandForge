@@ -10,7 +10,7 @@ return await SandForgeProgram.RunAsync(args);
 
 internal static class SandForgeProgram
 {
-    private const string CurrentVersion = "0.4.0-alpha";
+    private const string CurrentVersion = "0.5.0-alpha";
     private static UiText Text { get; set; } = UiText.Russian;
 
     public static async Task<int> RunAsync(string[] args)
@@ -27,6 +27,7 @@ internal static class SandForgeProgram
         Text = UiText.FromSetting(uiConfiguration.Language);
 
         var templateEngine = new TemplateEngine();
+        var compatibility = new CompatibilityService(templateEngine);
         var security = new SecurityPolicyEngine();
         var planner = new SessionPlanner(security, dataDirectory);
         var workspace = new WorkspaceManager();
@@ -34,7 +35,7 @@ internal static class SandForgeProgram
         var backend = new WindowsSandboxBackend();
         var artifacts = new ArtifactManager();
         var store = new SessionStore(dataDirectory);
-        var reports = new ReportWriter(Text);
+        var reports = new ReportWriter(Text, CurrentVersion);
         var coordinator = new SessionCoordinator(templateEngine, planner, workspace, generator, backend, artifacts, store, dataDirectory);
         var recovery = new SessionRecoveryService(store, artifacts);
         var cleanup = new CleanupService(store);
@@ -66,6 +67,7 @@ internal static class SandForgeProgram
                 "matrix" => await MatrixAsync(args, coordinator, reports, baseDirectory, cts.Token),
                 "session" => await SessionAsync(args, store, reports, dataDirectory, cts.Token),
                 "report" => await ReportAsync(args, store, reports, dataDirectory, cts.Token),
+                "schema" => await SchemaAsync(args, compatibility, cts.Token),
                 "recover" => await RecoverAsync(recovery, cts.Token),
                 "cleanup" => await CleanupAsync(args, cleanup, cts.Token),
                 "cache" => await CacheAsync(args, cache, cts.Token),
@@ -353,6 +355,67 @@ internal static class SandForgeProgram
             return 0;
         }
         return Unknown("unsupported update command");
+    }
+
+    private static async Task<int> SchemaAsync(
+        string[] args,
+        CompatibilityService compatibility,
+        CancellationToken cancellationToken)
+    {
+        string action = args.Length > 1 ? args[1].ToLowerInvariant() : "list";
+        if (action == "list")
+        {
+            Console.WriteLine(Text["Schema_Title"] + "\n" + new string('─', 92));
+            Console.WriteLine($"{Text["Schema_Id"],-22} {Text["Schema_Current"],-9} {Text["Schema_Supported"],-14} {Text["Schema_Deprecated"],-12} {Text["Schema_Syntax"],-7} {Text["Schema_File"]}");
+            foreach (ContractDescriptor contract in compatibility.ListContracts())
+            {
+                string supported = string.Join(',', contract.SupportedVersions);
+                string deprecated = contract.DeprecatedVersions.Count == 0 ? "—" : string.Join(',', contract.DeprecatedVersions);
+                Console.WriteLine($"{contract.Id,-22} {contract.CurrentVersion,-9} {supported,-14} {deprecated,-12} {contract.Syntax,-7} {contract.SchemaFile}");
+            }
+            return 0;
+        }
+
+        if (action is "describe" or "show")
+        {
+            if (args.Length < 3) return SchemaUsage();
+            ContractDescriptor? contract = compatibility.FindContract(args[2]);
+            if (contract is null)
+            {
+                Console.Error.WriteLine(Text.Format("Schema_UnknownContract", args[2]));
+                return 4;
+            }
+            Console.WriteLine($"{Text["Schema_Id"]}: {contract.Id}");
+            Console.WriteLine($"{Text["Schema_Current"]}: {contract.CurrentVersion}");
+            Console.WriteLine($"{Text["Schema_Supported"]}: {string.Join(", ", contract.SupportedVersions)}");
+            Console.WriteLine($"{Text["Schema_Deprecated"]}: {(contract.DeprecatedVersions.Count == 0 ? "—" : string.Join(", ", contract.DeprecatedVersions))}");
+            Console.WriteLine($"{Text["Schema_Syntax"]}: {contract.Syntax}");
+            Console.WriteLine($"{Text["Schema_File"]}: {contract.SchemaFile}");
+            return 0;
+        }
+
+        if (action == "validate")
+        {
+            if (args.Length < 3) return SchemaUsage();
+            string? requestedContract = ReadOption(args, "--contract");
+            ContractValidationResult result = await compatibility.ValidateAsync(args[2], requestedContract, cancellationToken);
+            Console.WriteLine(Text.Format("Schema_Detected", result.ContractId));
+            Console.WriteLine(Text.Format("Schema_Version", result.DetectedVersion?.ToString(CultureInfo.InvariantCulture) ?? "—"));
+            foreach (string warning in result.Warnings)
+                Console.WriteLine(Text.Format("Schema_Warning", warning));
+            foreach (string error in result.Errors)
+                Console.Error.WriteLine(Text.Format("Schema_Error", error));
+            Console.WriteLine(Text[result.IsValid ? "Schema_Valid" : "Schema_Invalid"]);
+            return result.IsValid ? 0 : 4;
+        }
+
+        return SchemaUsage();
+    }
+
+    private static int SchemaUsage()
+    {
+        Console.Error.WriteLine(Text["Schema_Usage"]);
+        return 2;
     }
 
     private static string? ReadOption(string[] args, string name)
