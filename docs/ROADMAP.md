@@ -1,5 +1,7 @@
 # 🗺️ Roadmap SandForge
 
+Актуальная стабильная версия: **`0.5.0`**. Сборка и checksum опубликованы в [GitHub Release v0.5.0](../../releases/tag/v0.5.0).
+
 ## ✅ 0.1.0-alpha — Безопасный сквозной сценарий
 
 - [x] доменные модели и контракты;
@@ -41,10 +43,10 @@
 - [x] экраны sessions/reports/recovery/cleanup/cache/updates;
 - [x] общий RU/EN resource catalog;
 - [x] `ui.language: ru|en|auto` и русский fallback;
-- [x] CI-проверка parity ключей локализации;
-- [ ] локализация оставшихся сообщений Core/guest bootstrap без изменения domain codes.
+- [x] CI-проверка parity обязательных ключей локализации;
+- [ ] локализация оставшихся сообщений Core/guest bootstrap без изменения domain codes — [#13](../../issues/13).
 
-## 🚧 0.5.0 — Compatibility contracts
+## ✅ 0.5.0 — Compatibility contracts
 
 - [x] versioned registry публичных форматов;
 - [x] JSON Schema Draft 2020-12 и общий catalog;
@@ -52,15 +54,35 @@
 - [x] supported/deprecated version policy;
 - [x] versioned JSON reports;
 - [x] portable package manifest с SHA-256;
-- [x] contract tests для текущих и legacy fixtures;
-- [ ] миграции между будущими версиями схем.
+- [x] contract tests для текущих и legacy-форматов;
+- [x] стабильный тег `v0.5.0`, Windows x64 ZIP и checksum;
+- [ ] миграции между будущими версиями схем и долгосрочное окно поддержки — [#14](../../issues/14).
+
+## 🚧 0.6.0 — Trust model и подписи
+
+- [x] автоматическая публикация ZIP и SHA-256 checksum;
+- [ ] подписанный manifest для `.sftemplate`;
+- [ ] fingerprint автора/издателя;
+- [ ] статусы `Trusted`, `Modified`, `Untrusted`, `Unsigned`;
+- [ ] безопасный просмотр неподписанного package без выполнения;
+- [ ] подпись release metadata и документация trust model.
+
+Задача: [#15 — Добавить подпись шаблонов и релизов](../../issues/15).
 
 ## 🎯 1.0.0 — Стабильная платформа
 
-- [~] стабильные схемы и compatibility policy;
-- [ ] подпись шаблонов и релизов;
-- [ ] Collector SDK;
-- [ ] несколько sandbox backends;
-- [ ] внешний security review.
+- [~] окончательно зафиксировать compatibility policy и миграции — [#14](../../issues/14);
+- [ ] завершить RU/EN локализацию Core/guest — [#13](../../issues/13);
+- [ ] Collector SDK — [#16](../../issues/16);
+- [ ] несколько sandbox backends — [#17](../../issues/17);
+- [ ] внешний security review — [#18](../../issues/18).
 
-Каждый крупный пункт roadmap представлен отдельной задачей в GitHub Issues с критериями готовности.
+## Порядок работ
+
+1. `0.6.0`: trust model и подписи;
+2. завершение локализации Core/guest;
+3. стабильные schema migrations и расширенные legacy fixtures;
+4. Collector SDK и backend abstraction;
+5. внешний security review и подготовка `1.0.0`.
+
+Каждый незавершённый крупный пункт представлен отдельной задачей в GitHub Issues с актуальным статусом и критериями готовности.
