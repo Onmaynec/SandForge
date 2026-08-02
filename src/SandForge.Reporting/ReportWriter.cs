@@ -18,7 +18,7 @@ public sealed class ReportWriter
     private readonly UiText _text;
     private readonly string _generatorVersion;
 
-    public ReportWriter(UiText? text = null, string generatorVersion = "0.5.0-alpha")
+    public ReportWriter(UiText? text = null, string generatorVersion = "0.5.0")
     {
         _text = text ?? UiText.Russian;
         _generatorVersion = generatorVersion;

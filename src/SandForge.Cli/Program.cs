@@ -10,7 +10,7 @@ return await SandForgeProgram.RunAsync(args);
 
 internal static class SandForgeProgram
 {
-    private const string CurrentVersion = "0.5.0-alpha";
+    private const string CurrentVersion = "0.5.0";
     private static UiText Text { get; set; } = UiText.Russian;
 
     public static async Task<int> RunAsync(string[] args)

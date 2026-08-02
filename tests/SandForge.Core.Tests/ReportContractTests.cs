@@ -16,7 +16,7 @@ public sealed class ReportContractTests
         string path = Path.Combine(directory, "report.json");
         try
         {
-            var writer = new ReportWriter(UiText.English, "0.5.0-alpha-test");
+            var writer = new ReportWriter(UiText.English, "0.5.0-test");
             var session = new SandboxSession
             {
                 Id = "session-contract-test",
@@ -35,7 +35,7 @@ public sealed class ReportContractTests
 
             Assert.Equal(1, root.GetProperty("schemaVersion").GetInt32());
             Assert.Equal("en", root.GetProperty("language").GetString());
-            Assert.Equal("0.5.0-alpha-test", root.GetProperty("generatorVersion").GetString());
+            Assert.Equal("0.5.0-test", root.GetProperty("generatorVersion").GetString());
             Assert.Equal("completed", root.GetProperty("session").GetProperty("status").GetString());
 
             var service = new CompatibilityService(new TemplateEngine());

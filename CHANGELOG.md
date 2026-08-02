@@ -1,4 +1,15 @@
 # Changelog
+## [0.5.0] - 2026-08-02
+
+### Добавлено
+- каталог публичных контрактов и версий схем;
+- команды `sandforge schema list|describe|validate`;
+- versioned JSON-отчёты и package manifest с SHA-256;
+- contract tests и compatibility policy.
+
+### Изменено
+- версия повышена до `0.5.0`;
+- неподдерживаемые версии схем блокируются до выполнения.
 
 ## [0.4.0-alpha] - 2026-08-01
 

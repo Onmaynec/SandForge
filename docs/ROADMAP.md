@@ -44,7 +44,7 @@
 - [x] CI-проверка parity ключей локализации;
 - [ ] локализация оставшихся сообщений Core/guest bootstrap без изменения domain codes.
 
-## 🚧 0.5.0-alpha — Compatibility contracts
+## 🚧 0.5.0 — Compatibility contracts
 
 - [x] versioned registry публичных форматов;
 - [x] JSON Schema Draft 2020-12 и общий catalog;
