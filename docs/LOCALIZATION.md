@@ -38,7 +38,7 @@ sandforge
 - schema CLI `list|describe|validate`;
 - основные validation warnings и ошибки presentation layer.
 
-Часть низкоуровневых Core/guest bootstrap diagnostics пока может оставаться русской. Завершение покрытия отслеживается в [issue #13](../../issues/13).
+Часть низкоуровневых Core/guest bootstrap diagnostics пока может оставаться русской. Завершение покрытия отслеживается в [issue #13](https://github.com/Onmaynec/SandForge/issues/13).
 
 ## Отчёты
 
