@@ -33,7 +33,7 @@
 - [x] управляемый cache;
 - [x] безопасные обновления через GitHub Releases.
 
-## 🚧 0.4.0-alpha — Интерактивное управление и локализация
+## ✅ 0.4.0-alpha — Интерактивное управление и локализация
 
 - [x] Spectre.Console dashboard и keyboard-first navigation;
 - [x] мастер запуска с security plan и подтверждением опасных настроек;
@@ -44,9 +44,20 @@
 - [x] CI-проверка parity ключей локализации;
 - [ ] локализация оставшихся сообщений Core/guest bootstrap без изменения domain codes.
 
+## 🚧 0.5.0-alpha — Compatibility contracts
+
+- [x] versioned registry публичных форматов;
+- [x] JSON Schema Draft 2020-12 и общий catalog;
+- [x] команда `schema list|describe|validate`;
+- [x] supported/deprecated version policy;
+- [x] versioned JSON reports;
+- [x] portable package manifest с SHA-256;
+- [x] contract tests для текущих и legacy fixtures;
+- [ ] миграции между будущими версиями схем.
+
 ## 🎯 1.0.0 — Стабильная платформа
 
-- [ ] стабильные схемы и compatibility policy;
+- [~] стабильные схемы и compatibility policy;
 - [ ] подпись шаблонов и релизов;
 - [ ] Collector SDK;
 - [ ] несколько sandbox backends;

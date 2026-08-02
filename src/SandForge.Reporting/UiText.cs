@@ -17,6 +17,44 @@ public sealed class UiText
     private static readonly CultureInfo RussianCulture = CultureInfo.GetCultureInfo("ru-RU");
     private static readonly CultureInfo EnglishCulture = CultureInfo.GetCultureInfo("en-US");
 
+    private static readonly IReadOnlyDictionary<string, string> RussianFallback = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["Schema_Title"] = "КОНТРАКТЫ И СХЕМЫ SANDFORGE",
+        ["Schema_Id"] = "Контракт",
+        ["Schema_Current"] = "Текущая",
+        ["Schema_Supported"] = "Поддержка",
+        ["Schema_Deprecated"] = "Устарели",
+        ["Schema_Syntax"] = "Синтаксис",
+        ["Schema_File"] = "Файл схемы",
+        ["Schema_Detected"] = "Контракт: {0}",
+        ["Schema_Version"] = "Версия схемы: {0}",
+        ["Schema_Valid"] = "Документ совместим.",
+        ["Schema_Invalid"] = "Документ несовместим.",
+        ["Schema_Warning"] = "Предупреждение: {0}",
+        ["Schema_Error"] = "Ошибка: {0}",
+        ["Schema_Usage"] = "Использование: sandforge schema list | describe <id> | validate <файл> [--contract <id>]",
+        ["Schema_UnknownContract"] = "Неизвестный контракт: {0}."
+    };
+
+    private static readonly IReadOnlyDictionary<string, string> EnglishFallback = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["Schema_Title"] = "SANDFORGE CONTRACTS AND SCHEMAS",
+        ["Schema_Id"] = "Contract",
+        ["Schema_Current"] = "Current",
+        ["Schema_Supported"] = "Supported",
+        ["Schema_Deprecated"] = "Deprecated",
+        ["Schema_Syntax"] = "Syntax",
+        ["Schema_File"] = "Schema file",
+        ["Schema_Detected"] = "Contract: {0}",
+        ["Schema_Version"] = "Schema version: {0}",
+        ["Schema_Valid"] = "The document is compatible.",
+        ["Schema_Invalid"] = "The document is incompatible.",
+        ["Schema_Warning"] = "Warning: {0}",
+        ["Schema_Error"] = "Error: {0}",
+        ["Schema_Usage"] = "Usage: sandforge schema list | describe <id> | validate <file> [--contract <id>]",
+        ["Schema_UnknownContract"] = "Unknown contract: {0}."
+    };
+
     private UiText(CultureInfo culture)
     {
         Culture = culture;
@@ -47,9 +85,14 @@ public sealed class UiText
     public string Get(string key)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        return ResourceManager.GetString(key, Culture)
-            ?? ResourceManager.GetString(key, RussianCulture)
-            ?? throw new MissingManifestResourceException($"Missing localization key: {key}");
+        string? resource = ResourceManager.GetString(key, Culture)
+            ?? ResourceManager.GetString(key, RussianCulture);
+        if (resource is not null) return resource;
+
+        IReadOnlyDictionary<string, string> fallback = LanguageCode == "en" ? EnglishFallback : RussianFallback;
+        if (fallback.TryGetValue(key, out string? value)) return value;
+        if (RussianFallback.TryGetValue(key, out value)) return value;
+        throw new MissingManifestResourceException($"Missing localization key: {key}");
     }
 
     public string Format(string key, params object?[] arguments) =>
@@ -63,15 +106,18 @@ public sealed class UiText
 
     public static IReadOnlyList<string> MissingKeys(string language)
     {
-        CultureInfo culture = language.Equals("en", StringComparison.OrdinalIgnoreCase)
-            ? CultureInfo.GetCultureInfo("en")
-            : CultureInfo.InvariantCulture;
+        bool english = language.Equals("en", StringComparison.OrdinalIgnoreCase);
+        CultureInfo culture = english ? CultureInfo.GetCultureInfo("en") : CultureInfo.InvariantCulture;
         ResourceSet? resourceSet = ResourceManager.GetResourceSet(culture, true, false);
-        if (resourceSet is null) return RequiredKeys;
-
         var available = new HashSet<string>(StringComparer.Ordinal);
-        foreach (DictionaryEntry entry in resourceSet)
-            if (entry.Key is string key) available.Add(key);
+        if (resourceSet is not null)
+        {
+            foreach (DictionaryEntry entry in resourceSet)
+                if (entry.Key is string key) available.Add(key);
+        }
+
+        foreach (string key in (english ? EnglishFallback : RussianFallback).Keys)
+            available.Add(key);
         return RequiredKeys.Where(key => !available.Contains(key)).ToArray();
     }
 
@@ -92,6 +138,9 @@ public sealed class UiText
         "Recovery_Title", "Recovery_Result", "Cleanup_Title", "Cleanup_None", "Cleanup_Preview", "Cleanup_Confirm",
         "Cleanup_Result", "Cache_Title", "Cache_Empty", "Cache_ActionClean", "Cache_ActionBack", "Cache_Result",
         "Updates_Title", "Updates_Status", "Updates_Check", "Updates_Install", "Updates_Back",
+        "Schema_Title", "Schema_Id", "Schema_Current", "Schema_Supported", "Schema_Deprecated", "Schema_Syntax",
+        "Schema_File", "Schema_Detected", "Schema_Version", "Schema_Valid", "Schema_Invalid", "Schema_Warning",
+        "Schema_Error", "Schema_Usage", "Schema_UnknownContract",
         "Report_Title", "Report_Offline", "Report_Session", "Report_Template", "Report_Status", "Report_Risk",
         "Report_TargetHash", "Report_Artifacts", "Report_Collectors", "Report_Cleanup", "Report_Error",
         "Report_Collector", "Report_Changes", "Report_File", "Report_State", "Report_Type", "Report_Path",

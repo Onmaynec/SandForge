@@ -1,17 +1,27 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using SandForge.Domain;
 
 namespace SandForge.Reporting;
 
 public sealed class ReportWriter
 {
-    private readonly UiText _text;
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
+    };
 
-    public ReportWriter(UiText? text = null)
+    private readonly UiText _text;
+    private readonly string _generatorVersion;
+
+    public ReportWriter(UiText? text = null, string generatorVersion = "0.5.0-alpha")
     {
         _text = text ?? UiText.Russian;
+        _generatorVersion = generatorVersion;
     }
 
     public UiText Text => _text;
@@ -42,11 +52,15 @@ public sealed class ReportWriter
     public async Task<string> WriteJsonAsync(SandboxSession session, string outputPath, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outputPath))!);
-        var envelope = new LocalizedSessionReport(_text.LanguageCode, session);
-        await File.WriteAllTextAsync(
-            outputPath,
-            JsonSerializer.Serialize(envelope, new JsonSerializerOptions { WriteIndented = true }),
-            cancellationToken);
+        var document = new SessionReportDocument
+        {
+            SchemaVersion = 1,
+            Language = _text.LanguageCode,
+            GeneratedAt = DateTimeOffset.UtcNow,
+            GeneratorVersion = _generatorVersion,
+            Session = session
+        };
+        await File.WriteAllTextAsync(outputPath, JsonSerializer.Serialize(document, JsonOptions), cancellationToken);
         return Path.GetFullPath(outputPath);
     }
 
@@ -70,6 +84,4 @@ public sealed class ReportWriter
     }
 
     private static string E(string value) => WebUtility.HtmlEncode(value);
-
-    private sealed record LocalizedSessionReport(string Language, SandboxSession Session);
 }
