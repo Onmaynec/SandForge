@@ -1,6 +1,6 @@
 # 🗺️ Roadmap SandForge
 
-Актуальная стабильная версия: **`0.5.0`**. Сборка и checksum опубликованы в [GitHub Release v0.5.0](../../releases/tag/v0.5.0).
+Актуальная стабильная версия: **`0.5.0`**. Сборка и checksum опубликованы в [GitHub Release v0.5.0](https://github.com/Onmaynec/SandForge/releases/tag/v0.5.0).
 
 ## ✅ 0.1.0-alpha — Безопасный сквозной сценарий
 
@@ -44,7 +44,7 @@
 - [x] общий RU/EN resource catalog;
 - [x] `ui.language: ru|en|auto` и русский fallback;
 - [x] CI-проверка parity обязательных ключей локализации;
-- [ ] локализация оставшихся сообщений Core/guest bootstrap без изменения domain codes — [#13](../../issues/13).
+- [ ] локализация оставшихся сообщений Core/guest bootstrap без изменения domain codes — [#13](https://github.com/Onmaynec/SandForge/issues/13).
 
 ## ✅ 0.5.0 — Compatibility contracts
 
@@ -56,7 +56,7 @@
 - [x] portable package manifest с SHA-256;
 - [x] contract tests для текущих и legacy-форматов;
 - [x] стабильный тег `v0.5.0`, Windows x64 ZIP и checksum;
-- [ ] миграции между будущими версиями схем и долгосрочное окно поддержки — [#14](../../issues/14).
+- [ ] миграции между будущими версиями схем и долгосрочное окно поддержки — [#14](https://github.com/Onmaynec/SandForge/issues/14).
 
 ## 🚧 0.6.0 — Trust model и подписи
 
@@ -67,15 +67,15 @@
 - [ ] безопасный просмотр неподписанного package без выполнения;
 - [ ] подпись release metadata и документация trust model.
 
-Задача: [#15 — Добавить подпись шаблонов и релизов](../../issues/15).
+Задача: [#15 — Добавить подпись шаблонов и релизов](https://github.com/Onmaynec/SandForge/issues/15).
 
 ## 🎯 1.0.0 — Стабильная платформа
 
-- [~] окончательно зафиксировать compatibility policy и миграции — [#14](../../issues/14);
-- [ ] завершить RU/EN локализацию Core/guest — [#13](../../issues/13);
-- [ ] Collector SDK — [#16](../../issues/16);
-- [ ] несколько sandbox backends — [#17](../../issues/17);
-- [ ] внешний security review — [#18](../../issues/18).
+- [~] окончательно зафиксировать compatibility policy и миграции — [#14](https://github.com/Onmaynec/SandForge/issues/14);
+- [ ] завершить RU/EN локализацию Core/guest — [#13](https://github.com/Onmaynec/SandForge/issues/13);
+- [ ] Collector SDK — [#16](https://github.com/Onmaynec/SandForge/issues/16);
+- [ ] несколько sandbox backends — [#17](https://github.com/Onmaynec/SandForge/issues/17);
+- [ ] внешний security review — [#18](https://github.com/Onmaynec/SandForge/issues/18).
 
 ## Порядок работ
 
