@@ -5,6 +5,7 @@
     <RootNamespace>SandForge.Cli</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Spectre.Console" />
     <ProjectReference Include="..\SandForge.Domain\SandForge.Domain.csproj" />
     <ProjectReference Include="..\SandForge.Core\SandForge.Core.csproj" />
     <ProjectReference Include="..\SandForge.Sandbox\SandForge.Sandbox.csproj" />

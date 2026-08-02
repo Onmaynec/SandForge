@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using SandForge.Cli;
 using SandForge.Core;
 using SandForge.Domain;
 using SandForge.Reporting;
@@ -9,7 +10,8 @@ return await SandForgeProgram.RunAsync(args);
 
 internal static class SandForgeProgram
 {
-    private const string CurrentVersion = "0.3.0-alpha";
+    private const string CurrentVersion = "0.4.0-alpha";
+    private static UiText Text { get; set; } = UiText.Russian;
 
     public static async Task<int> RunAsync(string[] args)
     {
@@ -21,6 +23,9 @@ internal static class SandForgeProgram
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SandForge");
         Directory.CreateDirectory(dataDirectory);
 
+        UiConfiguration uiConfiguration = UiConfiguration.Load(baseDirectory);
+        Text = UiText.FromSetting(uiConfiguration.Language);
+
         var templateEngine = new TemplateEngine();
         var security = new SecurityPolicyEngine();
         var planner = new SessionPlanner(security, dataDirectory);
@@ -29,7 +34,7 @@ internal static class SandForgeProgram
         var backend = new WindowsSandboxBackend();
         var artifacts = new ArtifactManager();
         var store = new SessionStore(dataDirectory);
-        var reports = new ReportWriter();
+        var reports = new ReportWriter(Text);
         var coordinator = new SessionCoordinator(templateEngine, planner, workspace, generator, backend, artifacts, store, dataDirectory);
         var recovery = new SessionRecoveryService(store, artifacts);
         var cleanup = new CleanupService(store);
@@ -42,7 +47,13 @@ internal static class SandForgeProgram
             int? automaticUpdateExit = await TryAutomaticUpdateAsync(args, updater, updateSettingsStore, cts.Token);
             if (automaticUpdateExit.HasValue) return automaticUpdateExit.Value;
             if (args.Length == 0)
-                return await InteractiveAsync(backend, store, reports, recovery, cleanup, cache, updater, updateSettingsStore, dataDirectory, cts.Token);
+            {
+                if (Console.IsInputRedirected || Console.IsOutputRedirected) return Help();
+                var tui = new TuiApplication(
+                    templateEngine, planner, coordinator, backend, store, reports, recovery, cleanup, cache,
+                    updater, updateSettingsStore, dataDirectory, baseDirectory, Text, uiConfiguration.Animations);
+                return await tui.RunAsync(cts.Token);
+            }
 
             return args[0].ToLowerInvariant() switch
             {
@@ -62,37 +73,16 @@ internal static class SandForgeProgram
                 _ => Unknown(args[0])
             };
         }
-        catch (OperationCanceledException) { Console.Error.WriteLine("Операция отменена."); return 12; }
+        catch (OperationCanceledException) { Console.Error.WriteLine(Text["Error_OperationCancelled"]); return 12; }
         catch (FileNotFoundException e) { Console.Error.WriteLine(e.Message); return 3; }
         catch (InvalidDataException e) { Console.Error.WriteLine(e.Message); return 4; }
         catch (InvalidOperationException e) when (e.Message.Contains("безопасност", StringComparison.OrdinalIgnoreCase)) { Console.Error.WriteLine(e.Message); return 7; }
-        catch (Exception e) { Console.Error.WriteLine($"Ошибка SandForge: {e.Message}"); return 1; }
+        catch (Exception e) { Console.Error.WriteLine(Text.Format("Error_Generic", e.Message)); return 1; }
     }
 
     private static int Help()
     {
-        Console.WriteLine("""
-        SandForge — менеджер одноразовых Windows-окружений.
-
-        Использование:
-          sandforge doctor
-          sandforge run <файл> [--template <путь>]
-          sandforge run-script <файл> [--template <путь>]
-          sandforge test-installer <файл> [--template <путь>]
-          sandforge matrix run <файл> --templates <имя1,имя2> [--parallel 2]
-          sandforge session list|show|delete [id]
-          sandforge report <id> [--format console|json|html]
-          sandforge recover
-          sandforge cleanup [--dry-run] [--older-than 30d] [--orphaned]
-          sandforge cache list
-          sandforge cache clean [тип] [--dry-run]
-          sandforge update check
-          sandforge update install [--yes]
-          sandforge update auto on|off [--apply]
-          sandforge update channel stable|preview
-
-        Шаблоны schemaVersion 2 поддерживают extends/includes, provisioning и managed cache.
-        """);
+        Console.WriteLine(Text["Help_Text"]);
         return 0;
     }
 
@@ -122,11 +112,11 @@ internal static class SandForgeProgram
                 Console.WriteLine(apply.Message);
                 return apply.Started ? 0 : null;
             }
-            Console.Error.WriteLine($"[Обновление] {check.Message} Запустите: sandforge update install");
+            Console.Error.WriteLine($"[Update] {check.Message} sandforge update install");
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
         {
-            // Автопроверка не должна ломать основную команду.
+            // Automatic update checks never break the requested command.
         }
         return null;
     }
@@ -143,14 +133,14 @@ internal static class SandForgeProgram
         _ = await store.LoadAsync(token);
         UpdateSettings updates = await updateSettingsStore.LoadAsync(token);
         IReadOnlyList<CacheEntry> entries = await cache.ListAsync(token);
-        Console.WriteLine("ДИАГНОСТИКА SANDFORGE\n" + new string('─', 52));
+        Console.WriteLine("SANDFORGE DIAGNOSTICS\n" + new string('─', 52));
         Console.WriteLine($"[{(OperatingSystem.IsWindows() ? "OK" : "FAIL")}] Windows");
-        Console.WriteLine($"[{(Environment.Is64BitOperatingSystem ? "OK" : "FAIL")}] 64-разрядная ОС");
+        Console.WriteLine($"[{(Environment.Is64BitOperatingSystem ? "OK" : "FAIL")}] 64-bit OS");
         Console.WriteLine($"[{(result.IsAvailable ? "OK" : "FAIL")}] {result.Message}");
-        Console.WriteLine($"[OK] Каталог данных: {dataDirectory}");
+        Console.WriteLine($"[OK] Data: {dataDirectory}");
         Console.WriteLine($"[OK] SQLite: {store.DatabasePath}");
         Console.WriteLine($"[OK] Managed cache: {FormatBytes(entries.Sum(x => x.SizeBytes))}");
-        Console.WriteLine($"[OK] GitHub updates: {(updates.AutoCheck ? "auto-check" : "manual")}, канал {updates.Channel}");
+        Console.WriteLine($"[OK] GitHub updates: {(updates.AutoCheck ? "auto-check" : "manual")}, {updates.Channel}");
         return result.IsAvailable ? 0 : 5;
     }
 
@@ -162,7 +152,7 @@ internal static class SandForgeProgram
         string defaultTemplate,
         CancellationToken token)
     {
-        if (args.Length < 2) return Unknown($"команда {args[0]} требует путь к файлу");
+        if (args.Length < 2) return Unknown($"{args[0]} requires a file path");
         string template = ReadOption(args, "--template") ?? FindTemplate(baseDirectory, defaultTemplate);
         SessionRunResult result = await coordinator.RunAsync(template, args[1], token);
         Console.WriteLine(reports.ToConsole(result.Session));
@@ -177,14 +167,14 @@ internal static class SandForgeProgram
         CancellationToken token)
     {
         if (args.Length < 3 || !args[1].Equals("run", StringComparison.OrdinalIgnoreCase))
-            return Unknown("использование: matrix run <файл> --templates <имя1,имя2>");
+            return Unknown("matrix run <file> --templates <name1,name2>");
         string? templatesOption = ReadOption(args, "--templates");
-        if (string.IsNullOrWhiteSpace(templatesOption)) return Unknown("matrix требует --templates");
+        if (string.IsNullOrWhiteSpace(templatesOption)) return Unknown("matrix requires --templates");
         int parallel = ReadIntOption(args, "--parallel", 1, 1, 4);
         string[] templates = templatesOption.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        if (templates.Length == 0) return Unknown("список matrix templates пуст");
+        if (templates.Length == 0) return Unknown("matrix template list is empty");
 
         using var gate = new SemaphoreSlim(parallel, parallel);
         Task<MatrixItem>[] tasks = templates.Select(async templateName =>
@@ -207,11 +197,11 @@ internal static class SandForgeProgram
         Console.WriteLine("MATRIX RUN\n" + new string('─', 70));
         foreach (MatrixItem item in results)
         {
-            if (item.Result is null) Console.WriteLine($"{item.Template,-24} ОШИБКА   {item.Error}");
-            else Console.WriteLine($"{item.Template,-24} {StatusRu(item.Result.Session.Status),-16} {item.Result.Session.Id}");
+            if (item.Result is null) Console.WriteLine($"{item.Template,-24} ERROR     {item.Error}");
+            else Console.WriteLine($"{item.Template,-24} {StatusText(item.Result.Session.Status),-16} {item.Result.Session.Id}");
         }
         MatrixItem? detailed = results.FirstOrDefault(x => x.Result is not null);
-        if (detailed?.Result is not null) Console.WriteLine("\nПервый отчёт:\n" + reports.ToConsole(detailed.Result.Session));
+        if (detailed?.Result is not null) Console.WriteLine("\n" + reports.ToConsole(detailed.Result.Session));
         return results.All(x => x.Result is not null && x.Result.Session.Status == SessionStatus.Completed) ? 0 : 9;
     }
 
@@ -220,37 +210,37 @@ internal static class SandForgeProgram
         if (args.Length < 2 || args[1].Equals("list", StringComparison.OrdinalIgnoreCase))
         {
             IReadOnlyList<SandboxSession> sessions = await store.LoadAsync(token);
-            Console.WriteLine("ID                         ШАБЛОН               СТАТУС       РИСК       ОЧИСТКА");
+            Console.WriteLine("ID                         TEMPLATE             STATUS             RISK       CLEANUP");
             foreach (SandboxSession s in sessions)
-                Console.WriteLine($"{s.Id,-26} {s.TemplateId,-20} {StatusRu(s.Status),-18} {RiskRu(s.Risk),-10} {CleanupRu(s.Cleanup)}");
+                Console.WriteLine($"{s.Id,-26} {s.TemplateId,-20} {StatusText(s.Status),-18} {RiskText(s.Risk),-10} {CleanupText(s.Cleanup)}");
             return 0;
         }
         if (args[1].Equals("show", StringComparison.OrdinalIgnoreCase) && args.Length >= 3)
         {
             SandboxSession? session = await store.FindAsync(args[2], token);
-            if (session is null) return Unknown("сессия не найдена");
+            if (session is null) return Unknown("session not found");
             Console.WriteLine(reports.ToConsole(session));
             return 0;
         }
         if (args[1].Equals("delete", StringComparison.OrdinalIgnoreCase) && args.Length >= 3)
         {
             SandboxSession? session = await store.FindAsync(args[2], token);
-            if (session is null) return Unknown("сессия не найдена");
+            if (session is null) return Unknown("session not found");
             string sessionsRoot = Path.Combine(dataDirectory, "sessions");
-            if (!CleanupService.IsInside(sessionsRoot, session.WorkspacePath)) throw new InvalidDataException("Путь workspace находится вне каталога SandForge.");
+            if (!CleanupService.IsInside(sessionsRoot, session.WorkspacePath)) throw new InvalidDataException("Workspace path is outside the SandForge directory.");
             if (Directory.Exists(session.WorkspacePath)) Directory.Delete(session.WorkspacePath, true);
             await store.DeleteAsync(session.Id, token);
-            Console.WriteLine($"Сессия {session.Id} удалена.");
+            Console.WriteLine(Text.Format("Sessions_Deleted", session.Id));
             return 0;
         }
-        return Unknown("неподдерживаемая команда session");
+        return Unknown("unsupported session command");
     }
 
     private static async Task<int> ReportAsync(string[] args, SessionStore store, ReportWriter reports, string dataDirectory, CancellationToken token)
     {
-        if (args.Length < 2) return Unknown("команда report требует ID сессии");
+        if (args.Length < 2) return Unknown("report requires a session ID");
         SandboxSession? session = await store.FindAsync(args[1], token);
-        if (session is null) return Unknown("сессия не найдена");
+        if (session is null) return Unknown("session not found");
         string format = ReadOption(args, "--format") ?? "console";
         string directory = Path.Combine(dataDirectory, "reports", session.Id);
         Directory.CreateDirectory(directory);
@@ -265,7 +255,7 @@ internal static class SandForgeProgram
     private static async Task<int> RecoverAsync(SessionRecoveryService recovery, CancellationToken token)
     {
         RecoveryResult result = await recovery.RecoverAsync(token);
-        Console.WriteLine($"Проверено: {result.Inspected}; восстановлено: {result.Recovered}; orphaned: {result.Orphaned}; ошибок: {result.Failed}.");
+        Console.WriteLine(Text.Format("Recovery_Result", result.Inspected, result.Recovered, result.Orphaned, result.Failed));
         return result.Failed == 0 ? 0 : 9;
     }
 
@@ -276,8 +266,10 @@ internal static class SandForgeProgram
         TimeSpan age = ParseAge(ReadOption(args, "--older-than") ?? "30d");
         CleanupResult result = await cleanup.CleanupAsync(age, orphaned, dry, token);
         foreach (CleanupCandidate candidate in result.Candidates)
-            Console.WriteLine($"{candidate.SessionId}  {candidate.Status,-10}  {FormatBytes(candidate.SizeBytes),10}  {candidate.WorkspacePath}");
-        Console.WriteLine(dry ? $"Будет очищено: {result.Candidates.Count}." : $"Очищено: {result.CleanedCount}; освобождено: {FormatBytes(result.ReclaimedBytes)}.");
+            Console.WriteLine($"{candidate.SessionId}  {StatusText(candidate.Status),-10}  {FormatBytes(candidate.SizeBytes),10}  {candidate.WorkspacePath}");
+        Console.WriteLine(dry
+            ? Text.Format("Cleanup_Preview", result.Candidates.Count, FormatBytes(result.Candidates.Sum(x => x.SizeBytes)))
+            : Text.Format("Cleanup_Result", result.CleanedCount, FormatBytes(result.ReclaimedBytes)));
         return 0;
     }
 
@@ -287,7 +279,7 @@ internal static class SandForgeProgram
         if (action == "list")
         {
             IReadOnlyList<CacheEntry> entries = await cache.ListAsync(token);
-            Console.WriteLine("ТИП       РАЗМЕР       ПУТЬ");
+            Console.WriteLine("TYPE      SIZE         PATH");
             foreach (CacheEntry entry in entries) Console.WriteLine($"{entry.Type,-9} {FormatBytes(entry.SizeBytes),10}  {entry.Path}");
             return 0;
         }
@@ -296,12 +288,10 @@ internal static class SandForgeProgram
             string? type = args.Length > 2 && !args[2].StartsWith("--", StringComparison.Ordinal) ? args[2] : null;
             bool dryRun = args.Contains("--dry-run", StringComparer.OrdinalIgnoreCase);
             CacheCleanupResult result = await cache.CleanupAsync(type, dryRun, token);
-            Console.WriteLine(dryRun
-                ? $"Будет удалено файлов: {result.RemovedEntries}, объём: {FormatBytes(result.ReclaimedBytes)}."
-                : $"Удалено файлов: {result.RemovedEntries}, освобождено: {FormatBytes(result.ReclaimedBytes)}.");
+            Console.WriteLine(Text.Format("Cache_Result", result.RemovedEntries, FormatBytes(result.ReclaimedBytes)));
             return 0;
         }
-        return Unknown("неподдерживаемая команда cache");
+        return Unknown("unsupported cache command");
     }
 
     private static async Task<int> UpdateAsync(string[] args, UpdateService updater, UpdateSettingsStore settingsStore, CancellationToken token)
@@ -310,10 +300,10 @@ internal static class SandForgeProgram
         UpdateSettings settings = await settingsStore.LoadAsync(token);
         if (action == "status")
         {
-            Console.WriteLine($"Автопроверка: {(settings.AutoCheck ? "включена" : "выключена")}");
-            Console.WriteLine($"Автоустановка: {(settings.AutoApply ? "включена" : "выключена")}");
-            Console.WriteLine($"Канал: {settings.Channel}");
-            Console.WriteLine($"Интервал: {settings.IntervalHours} ч.");
+            Console.WriteLine($"Auto check: {settings.AutoCheck}");
+            Console.WriteLine($"Auto apply: {settings.AutoApply}");
+            Console.WriteLine($"Channel: {settings.Channel}");
+            Console.WriteLine($"Interval: {settings.IntervalHours} h");
             Console.WriteLine($"GitHub repository: {settings.Repository}");
             return 0;
         }
@@ -331,7 +321,7 @@ internal static class SandForgeProgram
             if (!check.IsUpdateAvailable) { Console.WriteLine(check.Message); return 0; }
             if (!args.Contains("--yes", StringComparer.OrdinalIgnoreCase))
             {
-                Console.Write($"Установить SandForge {check.LatestVersion}? [y/N] ");
+                Console.Write($"Install SandForge {check.LatestVersion}? [y/N] ");
                 string? answer = Console.ReadLine();
                 if (!string.Equals(answer, "y", StringComparison.OrdinalIgnoreCase) && !string.Equals(answer, "yes", StringComparison.OrdinalIgnoreCase)) return 0;
             }
@@ -341,57 +331,28 @@ internal static class SandForgeProgram
         }
         if (action == "auto")
         {
-            if (args.Length < 3) return Unknown("update auto требует on или off");
+            if (args.Length < 3) return Unknown("update auto requires on or off");
             bool enabled = args[2].Equals("on", StringComparison.OrdinalIgnoreCase);
-            if (!enabled && !args[2].Equals("off", StringComparison.OrdinalIgnoreCase)) return Unknown("update auto требует on или off");
+            if (!enabled && !args[2].Equals("off", StringComparison.OrdinalIgnoreCase)) return Unknown("update auto requires on or off");
             settings = settings with
             {
                 AutoCheck = enabled,
                 AutoApply = enabled && args.Contains("--apply", StringComparer.OrdinalIgnoreCase)
             };
             await settingsStore.SaveAsync(settings, token);
-            Console.WriteLine(enabled
-                ? $"Автообновления включены{(settings.AutoApply ? " с автоматической установкой при запуске меню" : " в режиме уведомлений")} ."
-                : "Автообновления выключены.");
+            Console.WriteLine($"Auto check: {settings.AutoCheck}; auto apply: {settings.AutoApply}.");
             return 0;
         }
         if (action == "channel")
         {
             string channel = args.Length > 2 ? args[2].ToLowerInvariant() : string.Empty;
-            if (channel is not ("stable" or "preview")) return Unknown("update channel требует stable или preview");
+            if (channel is not ("stable" or "preview")) return Unknown("update channel requires stable or preview");
             settings = settings with { Channel = channel };
             await settingsStore.SaveAsync(settings, token);
-            Console.WriteLine($"Канал обновлений: {settings.Channel}.");
+            Console.WriteLine($"Update channel: {settings.Channel}.");
             return 0;
         }
-        return Unknown("неподдерживаемая команда update");
-    }
-
-    private static async Task<int> InteractiveAsync(
-        ISandboxBackend backend,
-        SessionStore store,
-        ReportWriter reports,
-        SessionRecoveryService recovery,
-        CleanupService cleanup,
-        CacheService cache,
-        UpdateService updater,
-        UpdateSettingsStore updateSettingsStore,
-        string dataDirectory,
-        CancellationToken token)
-    {
-        Console.WriteLine("╭──────────────────────────────────────────╮\n│ SANDFORGE 0.3 — WINDOWS SANDBOX MANAGER │\n╰──────────────────────────────────────────╯");
-        Console.WriteLine("[1] Диагностика\n[2] История сессий\n[3] Восстановить сессии\n[4] Предпросмотр очистки\n[5] Managed cache\n[6] Проверить обновления\n[0] Выход");
-        Console.Write("> ");
-        return Console.ReadLine() switch
-        {
-            "1" => await DoctorAsync(backend, store, cache, updateSettingsStore, dataDirectory, token),
-            "2" => await SessionAsync(["session", "list"], store, reports, dataDirectory, token),
-            "3" => await RecoverAsync(recovery, token),
-            "4" => await CleanupAsync(["cleanup", "--dry-run"], cleanup, token),
-            "5" => await CacheAsync(["cache", "list"], cache, token),
-            "6" => await UpdateAsync(["update", "check"], updater, updateSettingsStore, token),
-            _ => 0
-        };
+        return Unknown("unsupported update command");
     }
 
     private static string? ReadOption(string[] args, string name)
@@ -405,7 +366,7 @@ internal static class SandForgeProgram
         string? value = ReadOption(args, name);
         if (value is null) return fallback;
         if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result) || result < minimum || result > maximum)
-            throw new InvalidDataException($"{name} должен быть числом от {minimum} до {maximum}.");
+            throw new InvalidDataException($"{name} must be between {minimum} and {maximum}.");
         return result;
     }
 
@@ -425,7 +386,7 @@ internal static class SandForgeProgram
         text = text.Trim().ToLowerInvariant();
         if (text.EndsWith('d') && double.TryParse(text[..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out double days)) return TimeSpan.FromDays(days);
         if (text.EndsWith('h') && double.TryParse(text[..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out double hours)) return TimeSpan.FromHours(hours);
-        throw new InvalidDataException("Возраст должен быть задан как 30d или 12h.");
+        throw new InvalidDataException("Age must be specified as 30d or 12h.");
     }
 
     private static int ExitCode(SessionStatus status) => status switch
@@ -442,31 +403,16 @@ internal static class SandForgeProgram
         double number = value;
         int index = 0;
         while (number >= 1024 && index < units.Length - 1) { number /= 1024; index++; }
-        return $"{number:0.##} {units[index]}";
+        return $"{number.ToString("0.##", Text.Culture)} {units[index]}";
     }
 
-    private static string StatusRu(SessionStatus value) => value switch
-    {
-        SessionStatus.Created => "Создана", SessionStatus.Validating => "Проверка", SessionStatus.Preparing => "Подготовка",
-        SessionStatus.Ready => "Готова", SessionStatus.Starting => "Запуск", SessionStatus.Running => "Работает",
-        SessionStatus.Stopping => "Остановка", SessionStatus.Collecting => "Сбор данных", SessionStatus.Completed => "Завершена",
-        SessionStatus.Partial => "Частично", SessionStatus.Failed => "Ошибка", SessionStatus.Cancelled => "Отменена",
-        SessionStatus.TimedOut => "Timeout", SessionStatus.Orphaned => "Потеряна", _ => value.ToString()
-    };
-
-    private static string RiskRu(RiskLevel value) => value switch
-    {
-        RiskLevel.Low => "Низкий", RiskLevel.Medium => "Средний", RiskLevel.High => "Высокий", RiskLevel.Critical => "Критический", _ => value.ToString()
-    };
-
-    private static string CleanupRu(CleanupState value) => value switch
-    {
-        CleanupState.Pending => "Ожидает", CleanupState.Kept => "Сохранён", CleanupState.Cleaned => "Очищен", _ => value.ToString()
-    };
+    private static string StatusText(SessionStatus value) => Text.Status(value);
+    private static string RiskText(RiskLevel value) => Text.Risk(value);
+    private static string CleanupText(CleanupState value) => Text.Cleanup(value);
 
     private static int Unknown(string value)
     {
-        Console.Error.WriteLine($"Неверная команда: {value}. Используйте sandforge --help.");
+        Console.Error.WriteLine(Text.Format("Error_UnknownCommand", value));
         return 2;
     }
 
