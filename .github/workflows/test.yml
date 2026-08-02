@@ -4,7 +4,7 @@ on:
     branches: [main]
   pull_request:
 permissions:
-  contents: write
+  contents: read
 jobs:
   test:
     runs-on: windows-latest
@@ -18,8 +18,10 @@ jobs:
         run: dotnet run --project src/SandForge.Cli -- --help
 
   publish-v0-5-0:
-    if: github.event_name == 'pull_request' && github.head_ref == 'agent/publish-v0.5.0'
+    if: ${{ github.event_name == 'pull_request' && github.head_ref == 'agent/publish-v0.5.0' }}
     needs: test
+    permissions:
+      contents: write
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,133 +29,11 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: true
-
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-
-      - name: Promote source to stable 0.5.0
-        id: version
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $old = '0.5.0-alpha'
-          $new = '0.5.0'
-          $extensions = @('.cs','.props','.ps1','.md','.json','.yml','.yaml')
-          Get-ChildItem . -File -Recurse |
-            Where-Object { $extensions -contains $_.Extension.ToLowerInvariant() -and $_.FullName -notmatch '[\\/](bin|obj|artifacts|\.git)[\\/]' } |
-            ForEach-Object {
-              $text = Get-Content $_.FullName -Raw
-              if ($text.Contains($old)) { Set-Content $_.FullName $text.Replace($old,$new) -Encoding utf8 -NoNewline }
-            }
-
-          $text = Get-Content CHANGELOG.md -Raw
-          if (-not $text.Contains('## [0.5.0]')) {
-            $section = @'
-
-## [0.5.0] - 2026-08-02
-
-### Добавлено
-- каталог публичных контрактов и версий схем;
-- команды `sandforge schema list|describe|validate`;
-- versioned JSON-отчёты и package manifest с SHA-256;
-- contract tests и compatibility policy.
-
-### Изменено
-- версия повышена до `0.5.0`;
-- неподдерживаемые версии схем блокируются до выполнения.
-'@
-            $marker = '# Changelog'
-            $rest = if ($text.StartsWith($marker)) { $text.Substring($marker.Length).TrimStart([char[]]"`r`n") } else { $text }
-            Set-Content CHANGELOG.md ($marker + $section + "`r`n`r`n" + $rest) -Encoding utf8 -NoNewline
-          }
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          if (-not (git diff --cached --quiet)) {
-            git commit -m 'Выпустить SandForge 0.5.0'
-            git push origin HEAD:main
-          }
-          "sha=$((git rev-parse HEAD).Trim())" | Out-File $env:GITHUB_OUTPUT -Encoding utf8 -Append
-
-      - name: Test stable source
-        run: dotnet test SandForge.sln -c Release
-
-      - name: Package win-x64
-        shell: pwsh
-        run: ./scripts/package.ps1 -Version 0.5.0
-
-      - name: Write Russian release notes
-        shell: pwsh
-        run: |
-          @'
-          ## SandForge 0.5.0
-
-          ### Основные изменения
-          - проверка совместимости через `sandforge schema`;
-          - JSON Schema для основных форматов;
-          - versioned JSON-отчёты;
-          - package manifest с SHA-256;
-          - RU/EN интерфейс и contract tests.
-
-          Сравните SHA-256 архива с приложенным файлом `.sha256`.
-          '@ | Set-Content release-notes.md -Encoding utf8
-
-      - name: Publish tag and GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v0.5.0
-          target_commitish: ${{ steps.version.outputs.sha }}
-          name: SandForge v0.5.0
-          body_path: release-notes.md
-          draft: false
-          prerelease: false
-          make_latest: true
-          files: |
-            artifacts/SandForge-0.5.0-win-x64.zip
-            artifacts/SandForge-0.5.0-win-x64.zip.sha256
-
-      - name: Verify release assets
+      - name: Publish SandForge v0.5.0
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          $r = gh release view v0.5.0 --repo Onmaynec/SandForge --json tagName,isDraft,isPrerelease,url,assets | ConvertFrom-Json
-          $names = @($r.assets | ForEach-Object name)
-          if ($r.tagName -ne 'v0.5.0' -or $r.isDraft -or $r.isPrerelease) { throw 'Неверный статус релиза.' }
-          if ($names -notcontains 'SandForge-0.5.0-win-x64.zip') { throw 'ZIP отсутствует.' }
-          if ($names -notcontains 'SandForge-0.5.0-win-x64.zip.sha256') { throw 'Checksum отсутствует.' }
-          Write-Host $r.url
-
-      - name: Restore workflows
-        if: success()
-        shell: pwsh
-        run: |
-          @'
-          name: Test
-          on:
-            push:
-              branches: [main]
-            pull_request:
-          permissions:
-            contents: read
-          jobs:
-            test:
-              runs-on: windows-latest
-              steps:
-                - uses: actions/checkout@v4
-                - uses: actions/setup-dotnet@v4
-                  with:
-                    dotnet-version: 8.0.x
-                - run: dotnet test SandForge.sln -c Release
-                - name: CLI smoke test
-                  run: dotnet run --project src/SandForge.Cli -- --help
-          '@ | Set-Content .github/workflows/test.yml -Encoding utf8
-          Get-ChildItem .github/workflows/publish*0.5.0*.yml -ErrorAction SilentlyContinue | ForEach-Object { git rm -f $_.FullName }
-          git add .github/workflows/test.yml
-          git commit -m 'Удалить одноразовый publisher 0.5.0'
-          git push origin HEAD:main
-          git push origin --delete release/v0.5.0 2>$null
-          git push origin --delete agent/trigger-v0.5.0-release 2>$null
-          exit 0
+        run: ./scripts/publish-v0.5.0.ps1
