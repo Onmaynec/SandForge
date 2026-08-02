@@ -28,23 +28,24 @@ jobs:
         run: |
           $tag = '${{ github.ref_name }}'
           if ($tag -eq 'v0.5.0') {
-            @'
-            ## SandForge 0.5.0
-
-            ### Основные изменения
-            - проверка совместимости через `sandforge schema`;
-            - JSON Schema для основных форматов SandForge;
-            - versioned JSON-отчёты;
-            - package manifest с относительными путями, размером и SHA-256;
-            - RU/EN интерфейс и contract tests;
-            - блокировка неизвестных и неподдерживаемых версий схем.
-
-            ### Проверка архива
-            Сравните SHA-256 скачанного ZIP с приложенным файлом `.sha256`.
-            '@ | Set-Content -LiteralPath release-notes.md -Encoding utf8
+            $lines = @(
+              '## SandForge 0.5.0',
+              '',
+              '### Основные изменения',
+              '- проверка совместимости через `sandforge schema`;',
+              '- JSON Schema для основных форматов SandForge;',
+              '- versioned JSON-отчёты;',
+              '- package manifest с относительными путями, размером и SHA-256;',
+              '- RU/EN интерфейс и contract tests;',
+              '- блокировка неизвестных и неподдерживаемых версий схем.',
+              '',
+              '### Проверка архива',
+              'Сравните SHA-256 скачанного ZIP с приложенным файлом `.sha256`.'
+            )
           } else {
-            "## SandForge $tag`n`nАвтоматически собранный релиз SandForge.`n" | Set-Content -LiteralPath release-notes.md -Encoding utf8
+            $lines = @("## SandForge $tag", '', 'Автоматически собранный релиз SandForge.')
           }
+          $lines | Set-Content -LiteralPath release-notes.md -Encoding utf8
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
