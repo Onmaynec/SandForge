@@ -1,0 +1,158 @@
+name: Publish SandForge v0.5.0
+
+on:
+  push:
+    branches:
+      - release/v0.5.0
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-sandforge-v0.5.0
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'Onmaynec/SandForge'
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Promote source to 0.5.0
+        id: version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $oldVersion = '0.5.0-alpha'
+          $newVersion = '0.5.0'
+          $extensions = @('.cs', '.props', '.ps1', '.md', '.json', '.yml', '.yaml')
+
+          Get-ChildItem -Path . -File -Recurse |
+            Where-Object {
+              $extensions -contains $_.Extension.ToLowerInvariant() -and
+              $_.FullName -notmatch '[\\/](bin|obj|artifacts|\.git)[\\/]'
+            } |
+            ForEach-Object {
+              $content = Get-Content -LiteralPath $_.FullName -Raw
+              if ($content.Contains($oldVersion)) {
+                $updated = $content.Replace($oldVersion, $newVersion)
+                Set-Content -LiteralPath $_.FullName -Value $updated -Encoding utf8 -NoNewline
+              }
+            }
+
+          $changelogPath = 'CHANGELOG.md'
+          $changelog = Get-Content -LiteralPath $changelogPath -Raw
+          if (-not $changelog.Contains('## [0.5.0]')) {
+            $section = @'
+
+## [0.5.0] - 2026-08-02
+
+### Добавлено
+- каталог публичных контрактов и версий схем;
+- команды `sandforge schema list|describe|validate`;
+- JSON Schema для templates, config, reports, completion marker и package manifest;
+- versioned JSON-отчёты и portable package manifest с SHA-256;
+- contract tests и compatibility policy.
+
+### Изменено
+- версия SandForge повышена до `0.5.0`;
+- неподдерживаемые версии схем отклоняются до выполнения;
+- template schema 1 и legacy report schema 0 поддерживаются с предупреждением.
+'@
+            $marker = '# Changelog'
+            if ($changelog.StartsWith($marker)) {
+              $rest = $changelog.Substring($marker.Length).TrimStart([char[]]"`r`n")
+              $changelog = $marker + $section + "`r`n`r`n" + $rest
+            } else {
+              $changelog = $section.TrimStart() + "`r`n`r`n" + $changelog
+            }
+            Set-Content -LiteralPath $changelogPath -Value $changelog -Encoding utf8 -NoNewline
+          }
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if (-not (git diff --cached --quiet)) {
+            git commit -m 'Выпустить SandForge 0.5.0'
+            git push origin HEAD:main
+          }
+
+          $sha = (git rev-parse HEAD).Trim()
+          "sha=$sha" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Restore
+        run: dotnet restore SandForge.sln
+
+      - name: Test
+        run: dotnet test SandForge.sln -c Release --no-restore
+
+      - name: Package win-x64
+        shell: pwsh
+        run: ./scripts/package.ps1 -Version 0.5.0
+
+      - name: Write Russian release notes
+        shell: pwsh
+        run: |
+          @'
+          ## SandForge 0.5.0
+
+          Релиз добавляет версионированные контракты и проверку совместимости файлов до их использования.
+
+          ### Основные изменения
+          - команда `sandforge schema list|describe|validate`;
+          - JSON Schema Draft 2020-12 для основных форматов SandForge;
+          - versioned JSON-отчёты;
+          - package manifest с относительными путями, размером и SHA-256;
+          - поддержка устаревших template schema 1 и report schema 0 с предупреждением;
+          - блокировка неизвестных и неподдерживаемых схем;
+          - RU/EN интерфейс и contract tests.
+
+          ### Проверка загрузки
+          После скачивания сравните SHA-256 архива с файлом `.sha256`.
+          '@ | Set-Content -LiteralPath release-notes.md -Encoding utf8
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.5.0
+          target_commitish: ${{ steps.version.outputs.sha }}
+          name: SandForge v0.5.0
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: |
+            artifacts/SandForge-0.5.0-win-x64.zip
+            artifacts/SandForge-0.5.0-win-x64.zip.sha256
+
+      - name: Verify published release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $json = gh release view v0.5.0 --repo Onmaynec/SandForge --json tagName,isDraft,isPrerelease,url,assets
+          $release = $json | ConvertFrom-Json
+          if ($release.tagName -ne 'v0.5.0' -or $release.isDraft -or $release.isPrerelease) {
+            throw 'Release metadata verification failed.'
+          }
+          $assets = @($release.assets | ForEach-Object name)
+          if ($assets -notcontains 'SandForge-0.5.0-win-x64.zip') { throw 'ZIP asset is missing.' }
+          if ($assets -notcontains 'SandForge-0.5.0-win-x64.zip.sha256') { throw 'SHA-256 asset is missing.' }
+          Write-Host $release.url
+
+      - name: Remove temporary release branch
+        if: success()
+        shell: pwsh
+        run: git push origin --delete release/v0.5.0
