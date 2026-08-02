@@ -1,15 +1,27 @@
 # Changelog
+
 ## [0.5.0] - 2026-08-02
 
 ### Добавлено
-- каталог публичных контрактов и версий схем;
-- команды `sandforge schema list|describe|validate`;
-- versioned JSON-отчёты и package manifest с SHA-256;
-- contract tests и compatibility policy.
+- каталог публичных контрактов `schemas/catalog.json`;
+- команды `sandforge schema list`, `schema describe` и `schema validate`;
+- JSON Schema Draft 2020-12 для templates, config, reports, completion marker и package manifest;
+- versioned JSON-отчёты с `schemaVersion`, `generatedAt` и `generatorVersion`;
+- portable package manifest с относительными путями, размером и SHA-256 payload-файлов;
+- поддержка legacy template schema `1` и report schema `0` с предупреждением;
+- contract tests для текущих и устаревших форматов;
+- compatibility policy и машинно-читаемые сведения о supported/deprecated versions;
+- стабильный GitHub Release `v0.5.0` с Windows x64 ZIP и SHA-256 checksum.
 
 ### Изменено
-- версия повышена до `0.5.0`;
-- неподдерживаемые версии схем блокируются до выполнения.
+- версия проекта повышена с `0.4.0-alpha` до стабильной `0.5.0`;
+- неизвестные и неподдерживаемые версии схем блокируются до выполнения или импорта с exit code `4`;
+- JSON property names и enum values публичных контрактов зафиксированы в lower camel case;
+- release packaging теперь формирует и проверяет `manifest.json`.
+
+### Документация
+- README, английский обзор, команды, roadmap и compatibility policy синхронизированы с `0.5.0`;
+- публичные issues обновлены с учётом завершённых работ и оставшихся задач перед `1.0.0`.
 
 ## [0.4.0-alpha] - 2026-08-01
 
@@ -45,8 +57,6 @@
 - версия проекта повышена до `0.3.0-alpha`;
 - built-in templates переведены на наследование от общего безопасного base;
 - release workflow публикует package и checksum, совместимые с updater.
-
-# История изменений
 
 ## [0.2.0-alpha] — 2026-08-01
 
