@@ -1,7 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://sandforge.dev/schemas/template.schema.json",
-  "title": "SandForge template",
+  "$id": "https://sandforge.dev/schemas/template/v2.json",
+  "title": "SandForge template v2",
+  "x-sandforge-contract": {
+    "id": "template",
+    "currentVersion": 2,
+    "supportedVersions": [1, 2],
+    "deprecatedVersions": [1]
+  },
   "type": "object",
   "required": ["schemaVersion"],
   "properties": {
