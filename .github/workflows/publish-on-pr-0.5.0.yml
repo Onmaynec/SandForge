@@ -1,0 +1,133 @@
+name: Publish SandForge 0.5.0 from PR trigger
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: publish-sandforge-v0.5.0
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.head_ref == 'agent/publish-v0.5.0' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Promote source to stable 0.5.0
+        id: version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $old = '0.5.0-alpha'
+          $new = '0.5.0'
+          $extensions = @('.cs','.props','.ps1','.md','.json','.yml','.yaml')
+          Get-ChildItem . -File -Recurse |
+            Where-Object { $extensions -contains $_.Extension.ToLowerInvariant() -and $_.FullName -notmatch '[\\/](bin|obj|artifacts|\.git)[\\/]' } |
+            ForEach-Object {
+              $text = Get-Content $_.FullName -Raw
+              if ($text.Contains($old)) { Set-Content $_.FullName $text.Replace($old,$new) -Encoding utf8 -NoNewline }
+            }
+
+          $text = Get-Content CHANGELOG.md -Raw
+          if (-not $text.Contains('## [0.5.0]')) {
+            $section = @'
+
+## [0.5.0] - 2026-08-02
+
+### Добавлено
+- каталог публичных контрактов и версий схем;
+- команды `sandforge schema list|describe|validate`;
+- versioned JSON-отчёты и package manifest с SHA-256;
+- contract tests и compatibility policy.
+
+### Изменено
+- версия повышена до `0.5.0`;
+- неподдерживаемые версии схем блокируются до выполнения.
+'@
+            $marker = '# Changelog'
+            $rest = if ($text.StartsWith($marker)) { $text.Substring($marker.Length).TrimStart([char[]]"`r`n") } else { $text }
+            Set-Content CHANGELOG.md ($marker + $section + "`r`n`r`n" + $rest) -Encoding utf8 -NoNewline
+          }
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if (-not (git diff --cached --quiet)) {
+            git commit -m 'Выпустить SandForge 0.5.0'
+            git push origin HEAD:main
+          }
+          "sha=$((git rev-parse HEAD).Trim())" | Out-File $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Test release source
+        run: dotnet test SandForge.sln -c Release
+
+      - name: Package win-x64
+        shell: pwsh
+        run: ./scripts/package.ps1 -Version 0.5.0
+
+      - name: Write release notes
+        shell: pwsh
+        run: |
+          @'
+          ## SandForge 0.5.0
+
+          ### Основные изменения
+          - проверка совместимости через `sandforge schema`;
+          - JSON Schema для основных форматов;
+          - versioned JSON-отчёты;
+          - package manifest с SHA-256;
+          - RU/EN интерфейс и contract tests.
+
+          Сравните SHA-256 архива с приложенным файлом `.sha256`.
+          '@ | Set-Content release-notes.md -Encoding utf8
+
+      - name: Publish tag and GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.5.0
+          target_commitish: ${{ steps.version.outputs.sha }}
+          name: SandForge v0.5.0
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: |
+            artifacts/SandForge-0.5.0-win-x64.zip
+            artifacts/SandForge-0.5.0-win-x64.zip.sha256
+
+      - name: Verify release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $r = gh release view v0.5.0 --repo Onmaynec/SandForge --json tagName,isDraft,isPrerelease,url,assets | ConvertFrom-Json
+          $names = @($r.assets | ForEach-Object name)
+          if ($r.tagName -ne 'v0.5.0' -or $r.isDraft -or $r.isPrerelease) { throw 'Неверный статус релиза.' }
+          if ($names -notcontains 'SandForge-0.5.0-win-x64.zip') { throw 'ZIP отсутствует.' }
+          if ($names -notcontains 'SandForge-0.5.0-win-x64.zip.sha256') { throw 'Checksum отсутствует.' }
+          Write-Host $r.url
+
+      - name: Remove one-time publisher files
+        if: success()
+        shell: pwsh
+        run: |
+          Get-ChildItem .github/workflows/publish*0.5.0*.yml -ErrorAction SilentlyContinue | ForEach-Object { git rm -f $_.FullName }
+          if (-not (git diff --cached --quiet)) {
+            git commit -m 'Удалить одноразовые publisher workflows 0.5.0'
+            git push origin HEAD:main
+          }
