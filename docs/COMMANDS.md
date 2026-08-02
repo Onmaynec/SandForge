@@ -1,12 +1,15 @@
-# ⌨️ Команды SandForge 0.2
+# ⌨️ Команды SandForge 0.5.0
 
 ## Общие команды
 
 ```powershell
+sandforge
 sandforge --help
 sandforge --version
 sandforge doctor
 ```
+
+Запуск без аргументов открывает интерактивный TUI.
 
 ## Запуск файлов
 
@@ -18,6 +21,25 @@ sandforge test-installer .\Setup.exe
 ```
 
 `test-installer` использует встроенный шаблон `installer-test` и активирует before/after collectors.
+
+## Проверка схем и совместимости
+
+```powershell
+sandforge schema list
+sandforge schema describe template
+sandforge schema describe report
+sandforge schema validate .\templates\minimal\sandforge.yaml
+sandforge schema validate .\report.json --contract report
+```
+
+Команды:
+
+- `schema list` — показать зарегистрированные контракты, текущие, поддерживаемые и устаревшие версии;
+- `schema describe <id>` — показать сведения о конкретном контракте;
+- `schema validate <file>` — автоматически определить контракт и проверить документ;
+- `--contract <id>` — явно выбрать контракт, когда автоматическое определение неоднозначно.
+
+Exit code `4` означает невалидный документ, неизвестный контракт или неподдерживаемую версию схемы. Подробности: [COMPATIBILITY.md](COMPATIBILITY.md).
 
 ## История сессий
 
@@ -36,6 +58,8 @@ sandforge report <session-id>
 sandforge report <session-id> --format json
 sandforge report <session-id> --format html
 ```
+
+JSON-отчёты версии `0.5.0` используют report schema `1` и содержат `schemaVersion`, `language`, `generatedAt`, `generatorVersion` и объект сессии. Legacy-отчёты без `schemaVersion` распознаются как schema `0` и открываются с предупреждением.
 
 ## Восстановление
 
@@ -59,23 +83,7 @@ sandforge cleanup --orphaned --older-than 1h
 - `--older-than 30d` — минимальный возраст (`d` или `h`);
 - `--orphaned` — обрабатывать только orphaned-сессии.
 
-## Exit codes
-
-| Код | Значение |
-|---:|---|
-| `0` | успех |
-| `1` | общая ошибка |
-| `2` | неверные аргументы |
-| `3` | файл или шаблон не найден |
-| `4` | ошибка валидации |
-| `5` | Windows Sandbox недоступна |
-| `7` | запуск заблокирован политикой безопасности |
-| `9` | частичный результат |
-| `10` | сессия завершилась ошибкой |
-| `11` | timeout |
-| `12` | отменено пользователем |
-
-## Matrix Runner (`0.3.0-alpha`)
+## Matrix Runner
 
 ```powershell
 sandforge matrix run .\Application.exe --templates minimal,isolated-analysis
@@ -103,4 +111,21 @@ sandforge update auto on|off [--apply]
 sandforge update channel stable|preview
 ```
 
-`update check` возвращает exit code `20`, когда новая версия найдена. Это позволяет использовать проверку в скриптах.
+`update check` возвращает exit code `20`, когда найдена новая версия. Релиз `v0.5.0` публикует Windows x64 ZIP и отдельный SHA-256 checksum.
+
+## Exit codes
+
+| Код | Значение |
+|---:|---|
+| `0` | успех |
+| `1` | общая ошибка |
+| `2` | неверные аргументы или использование команды |
+| `3` | файл или шаблон не найден |
+| `4` | ошибка валидации, неизвестная или неподдерживаемая схема |
+| `5` | Windows Sandbox недоступна |
+| `7` | запуск заблокирован политикой безопасности |
+| `9` | частичный результат |
+| `10` | сессия завершилась ошибкой |
+| `11` | timeout |
+| `12` | отменено пользователем |
+| `20` | доступно обновление |
