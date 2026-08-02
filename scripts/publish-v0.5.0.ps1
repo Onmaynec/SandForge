@@ -7,7 +7,8 @@ $Extensions = @('.cs', '.props', '.ps1', '.md', '.json', '.yml', '.yaml')
 Get-ChildItem -Path . -File -Recurse |
     Where-Object {
         $Extensions -contains $_.Extension.ToLowerInvariant() -and
-        $_.FullName -notmatch '[\\/](bin|obj|artifacts|\.git)[\\/]'
+        $_.FullName -notmatch '[\\/](bin|obj|artifacts|\.git)[\\/]' -and
+        $_.FullName -notmatch '[\\/]\.github[\\/]workflows[\\/]'
     } |
     ForEach-Object {
         $Text = Get-Content -LiteralPath $_.FullName -Raw
@@ -47,6 +48,7 @@ git add -A
 if (-not (git diff --cached --quiet)) {
     git commit -m 'Выпустить SandForge 0.5.0'
     git push origin HEAD:main
+    if ($LASTEXITCODE -ne 0) { throw 'Stable version push failed.' }
 }
 $ReleaseSha = (git rev-parse HEAD).Trim()
 
@@ -54,53 +56,39 @@ Write-Host 'Running stable release tests...'
 dotnet test SandForge.sln -c Release
 if ($LASTEXITCODE -ne 0) { throw 'Release tests failed.' }
 
-Write-Host 'Building win-x64 package...'
-./scripts/package.ps1 -Version $NewVersion
-
-$NotesPath = Join-Path $PWD 'release-notes-v0.5.0.md'
-@'
-## SandForge 0.5.0
-
-### Основные изменения
-- проверка совместимости через `sandforge schema`;
-- JSON Schema для основных форматов;
-- versioned JSON-отчёты;
-- package manifest с SHA-256;
-- RU/EN интерфейс и contract tests.
-
-Сравните SHA-256 архива с приложенным файлом `.sha256`.
-'@ | Set-Content -LiteralPath $NotesPath -Encoding utf8
-
-$Zip = 'artifacts/SandForge-0.5.0-win-x64.zip'
-$Checksum = 'artifacts/SandForge-0.5.0-win-x64.zip.sha256'
-$Existing = $false
-try {
-    gh release view v0.5.0 --repo Onmaynec/SandForge *> $null
-    $Existing = $LASTEXITCODE -eq 0
-} catch {
-    $Existing = $false
-}
-
-if ($Existing) {
-    gh release upload v0.5.0 $Zip $Checksum --repo Onmaynec/SandForge --clobber
+git fetch --tags origin
+$RemoteTag = git ls-remote --tags origin 'refs/tags/v0.5.0'
+if ([string]::IsNullOrWhiteSpace(($RemoteTag | Out-String))) {
+    git tag -a v0.5.0 $ReleaseSha -m 'SandForge v0.5.0'
+    git push origin refs/tags/v0.5.0
+    if ($LASTEXITCODE -ne 0) { throw 'Tag push failed.' }
 } else {
-    gh release create v0.5.0 $Zip $Checksum --repo Onmaynec/SandForge --target $ReleaseSha --title 'SandForge v0.5.0' --notes-file $NotesPath
+    Write-Host 'Tag v0.5.0 already exists.'
 }
-if ($LASTEXITCODE -ne 0) { throw 'GitHub Release publication failed.' }
 
-gh release edit v0.5.0 --repo Onmaynec/SandForge --title 'SandForge v0.5.0' --notes-file $NotesPath --draft=false --prerelease=false --latest
-if ($LASTEXITCODE -ne 0) { throw 'GitHub Release metadata update failed.' }
+Write-Host 'Waiting for the tag workflow to publish the release...'
+$Deadline = (Get-Date).AddMinutes(8)
+$Release = $null
+do {
+    Start-Sleep -Seconds 5
+    try {
+        $Json = gh release view v0.5.0 --repo Onmaynec/SandForge --json tagName,isDraft,isPrerelease,url,assets 2>$null
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($Json)) {
+            $Candidate = $Json | ConvertFrom-Json
+            $Names = @($Candidate.assets | ForEach-Object name)
+            if ($Names -contains 'SandForge-0.5.0-win-x64.zip' -and $Names -contains 'SandForge-0.5.0-win-x64.zip.sha256') {
+                $Release = $Candidate
+                break
+            }
+        }
+    } catch {
+        $Release = $null
+    }
+} while ((Get-Date) -lt $Deadline)
 
-$Release = gh release view v0.5.0 --repo Onmaynec/SandForge --json tagName,isDraft,isPrerelease,url,assets | ConvertFrom-Json
-$AssetNames = @($Release.assets | ForEach-Object name)
+if ($null -eq $Release) { throw 'Published release or required assets were not found.' }
 if ($Release.tagName -ne 'v0.5.0' -or $Release.isDraft -or $Release.isPrerelease) {
     throw 'Release status verification failed.'
-}
-if ($AssetNames -notcontains 'SandForge-0.5.0-win-x64.zip') {
-    throw 'ZIP asset is missing.'
-}
-if ($AssetNames -notcontains 'SandForge-0.5.0-win-x64.zip.sha256') {
-    throw 'SHA-256 asset is missing.'
 }
 
 Write-Host "Published: $($Release.url)"
