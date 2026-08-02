@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schemaVersion": 1,
+  "product": "SandForge",
+  "contracts": [
+    {
+      "id": "template",
+      "currentVersion": 2,
+      "supportedVersions": [1, 2],
+      "deprecatedVersions": [1],
+      "syntax": "yaml",
+      "schema": "template.schema.json"
+    },
+    {
+      "id": "config",
+      "currentVersion": 2,
+      "supportedVersions": [2],
+      "deprecatedVersions": [],
+      "syntax": "json",
+      "schema": "config.schema.json"
+    },
+    {
+      "id": "report",
+      "currentVersion": 1,
+      "supportedVersions": [0, 1],
+      "deprecatedVersions": [0],
+      "syntax": "json",
+      "schema": "report.schema.json"
+    },
+    {
+      "id": "completion-marker",
+      "currentVersion": 1,
+      "supportedVersions": [1],
+      "deprecatedVersions": [],
+      "syntax": "json",
+      "schema": "completion-marker.schema.json"
+    },
+    {
+      "id": "package-manifest",
+      "currentVersion": 1,
+      "supportedVersions": [1],
+      "deprecatedVersions": [],
+      "syntax": "json",
+      "schema": "package-manifest.schema.json"
+    }
+  ]
+}
